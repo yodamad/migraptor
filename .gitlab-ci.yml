@@ -4,6 +4,7 @@ include:
     inputs:
       snapshot-image: "yodamad/$CI_PROJECT_NAME:snapshot"
       release-image: "yodamad/$CI_PROJECT_NAME:$CI_COMMIT_REF_NAME"
+      build-tool: "dind"
 
 variables:
   GO_SBOM_OPTS: "-main cmd/migrate"
