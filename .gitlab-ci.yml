@@ -18,9 +18,6 @@ docker-build:
   image: docker:24-dind
   services:
     - docker:24-dind
-  dependencies:
-    - build
-    - test
   before_script: |
     # Compute image tag: use Git tag name if available, otherwise "dev"
     if [ -n "$CI_COMMIT_TAG" ]; then
