@@ -28,7 +28,7 @@ git clone <repository-url>
 cd migraptor
 
 # Build the binary
-go build -o migrate ./cmd/migrate
+go build -o migraptor ./cmd/migrate
 
 # The binary will be created as 'migrate' in the current directory
 ```
@@ -36,8 +36,8 @@ go build -o migrate ./cmd/migrate
 ### Using the Binary
 
 After building, you can:
-- Run directly: `./migrate [options]`
-- Install to PATH: `sudo cp migrate /usr/local/bin/`
+- Run directly: `./migraptor [options]`
+- Install to PATH: `sudo cp migraptor /usr/local/bin/`
 
 ### Using Docker
 
@@ -116,7 +116,7 @@ export NEW_GROUP_NAME="destination-group"
 ### Basic Usage
 
 ```bash
-./migrate -g <GITLAB_TOKEN> -o <OLD_GROUP_NAME> -n <NEW_GROUP_NAME>
+./migraptor -g <GITLAB_TOKEN> -o <OLD_GROUP_NAME> -n <NEW_GROUP_NAME>
 ```
 
 ### Command-Line Options
@@ -140,12 +140,12 @@ export NEW_GROUP_NAME="destination-group"
 
 #### Example 1: Simple Migration
 ```bash
-./migrate -g glpat-xxxxx -o old-group -n new-group
+./migraptor -g glpat-xxxxx -o old-group -n new-group
 ```
 
 #### Example 2: Migrate Specific Projects with Tag Filter
 ```bash
-./migrate \
+./migraptor \
   -g glpat-xxxxx \
   -o source-group \
   -n target-group \
@@ -155,7 +155,7 @@ export NEW_GROUP_NAME="destination-group"
 
 #### Example 3: Dry Run (Test Migration)
 ```bash
-./migrate \
+./migraptor \
   -g glpat-xxxxx \
   -o old-group \
   -n new-group \
@@ -165,7 +165,7 @@ export NEW_GROUP_NAME="destination-group"
 
 #### Example 4: Transfer Projects Individually (Don't Keep Parent)
 ```bash
-./migrate \
+./migraptor \
   -g glpat-xxxxx \
   -o old-group \
   -n new-group \
@@ -264,7 +264,7 @@ migraptor/
 Always test with `-f` (dry-run) flag first:
 
 ```bash
-./migrate -g <TOKEN> -o <OLD_GROUP> -n <NEW_GROUP> -f -v
+./migraptor -g <TOKEN> -o <OLD_GROUP> -n <NEW_GROUP> -f -v
 ```
 
 This will show you what would happen without making actual changes.
@@ -274,7 +274,7 @@ This will show you what would happen without making actual changes.
 Use `-v` flag for detailed debugging information:
 
 ```bash
-./migrate -g <TOKEN> -o <OLD_GROUP> -n <NEW_GROUP> -v
+./migraptor -g <TOKEN> -o <OLD_GROUP> -n <NEW_GROUP> -v
 ```
 
 All operations are logged to `migrate.log` in the current directory.
@@ -314,7 +314,7 @@ The tool creates a `migrate.log` file in the current directory with:
 
 ```bash
 # Build
-go build -o migrate ./cmd/migrate
+go build -o migraptor ./cmd/migrate
 
 # Run tests (if any)
 go test ./...
