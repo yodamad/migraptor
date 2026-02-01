@@ -1,0 +1,10 @@
+include:
+  - component: $CI_SERVER_FQDN/to-be-continuous/golang/gitlab-ci-golang@4.15.0
+  - component: $CI_SERVER_FQDN/to-be-continuous/docker/gitlab-ci-docker@8.0.10
+    inputs:
+      snapshot-image: "yodamad/$CI_PROJECT_NAME/snapshot:$CI_COMMIT_REF_SLUG"
+      release-image: "yodamad/$CI_PROJECT_NAME:$CI_COMMIT_REF_NAME"
+
+variables:
+  GO_SBOM_OPTS: "-main cmd/migrate"
+
