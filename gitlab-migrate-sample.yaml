@@ -1,0 +1,62 @@
+# GitLab Migration Tool Configuration File
+# This file configures the GitLab project migration tool
+# Config file location: ./gitlab-migrate.yaml or ~/.gitlab-migrate.yaml
+
+# ============================================================================
+# REQUIRED SETTINGS
+# ============================================================================
+
+# GitLab API Token
+# Generate at: https://gitlab.com/-/user_settings/personal_access_tokens
+# Required permissions: api, read_registry, write_registry
+gitlab_token: "your token here"
+
+# Source group name (the group containing projects to migrate)
+# Example: "old-group" or "parent/old-group"
+old_group_name: ""
+
+# Destination group name (where projects will be migrated to)
+# Example: "/new-group" or "/parent/new-group"
+new_group_name: ""
+
+# ============================================================================
+# OPTIONAL SETTINGS
+# ============================================================================
+
+# GitLab instance URL (default: gitlab.com)
+# For self-hosted GitLab: "gitlab.example.com"
+gitlab_instance: ""
+
+# GitLab Container Registry URL
+# Default: "registry.<gitlab_instance>"
+# Example: "registry.gitlab.com" or "registry.gitlab.example.com"
+gitlab_registry: ""
+
+# Docker registry authentication token
+# Optional: defaults to gitlab_token if not specified
+docker_token: ""
+
+# List of specific projects to migrate (comma-separated or YAML list)
+# Optional: leave empty [] to migrate all projects in the group
+# Example: ["project1", "project2"] or ["project1"]
+projects_list: [""]
+
+# List of Docker image tags to migrate (comma-separated or YAML list)
+# Optional: leave empty [] to migrate all tags
+# Example: ["latest", "stable", "v1.0.0"] or ["latest"]
+tags_list: []
+
+# Keep parent group structure when migrating
+# true: Transfer the entire group (keeps group structure)
+# false: Transfer projects individually (doesn't keep parent group)
+keep_parent: true
+
+# Dry run mode (simulate migration without making changes)
+# true: Show what would happen without actually migrating
+# false: Perform actual migration
+dry_run: true
+
+# Verbose mode (enable detailed logging and debug output)
+# true: Show detailed debug information
+# false: Show only essential information
+verbose: false
