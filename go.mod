@@ -1,4 +1,4 @@
-module gitlab-transfer-script
+module migraptor
 
 go 1.25.6
 

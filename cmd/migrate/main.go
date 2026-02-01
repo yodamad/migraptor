@@ -9,11 +9,11 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"gitlab-transfer-script/internal/config"
-	"gitlab-transfer-script/internal/docker"
-	"gitlab-transfer-script/internal/gitlab"
-	"gitlab-transfer-script/internal/migration"
-	"gitlab-transfer-script/internal/ui"
+	"migraptor/internal/config"
+	"migraptor/internal/docker"
+	"migraptor/internal/gitlab"
+	"migraptor/internal/migration"
+	"migraptor/internal/ui"
 )
 
 var (
@@ -38,17 +38,17 @@ from a group to another, as it's not possible through GitLab UI.`,
 
 func init() {
 	// Define flags matching bash script interface
-	rootCmd.Flags().StringVarP(&cfg.GitLabToken, "token", "g", cfg.GitLabToken, "your gitlab API token")
-	rootCmd.Flags().StringVarP(&cfg.OldGroupName, "old-group", "o", cfg.OldGroupName, "the group containing the projects you want to migrate")
-	rootCmd.Flags().StringVarP(&cfg.NewGroupName, "new-group", "n", cfg.NewGroupName, "the full path of group that will contain the migrated projects")
-	rootCmd.Flags().BoolVarP(&cfg.DryRun, "dry-run", "f", cfg.DryRun, "fake run")
-	rootCmd.Flags().StringVarP(&cfg.GitLabInstance, "instance", "i", cfg.GitLabInstance, "change gitlab instance. By default, it's gitlab.com")
-	rootCmd.Flags().BoolVarP(&keepParentFlag, "keep-parent", "k", false, "don't keep the parent group, transfer projects individually instead")
-	rootCmd.Flags().StringVarP(&projectsListStr, "projects", "l", "", "list projects to move if you want to keep some in origin group (comma-separated)")
-	rootCmd.Flags().StringVarP(&cfg.DockerToken, "docker-password", "p", cfg.DockerToken, "password for registry")
-	rootCmd.Flags().StringVarP(&cfg.GitLabRegistry, "registry", "r", cfg.GitLabRegistry, "change gitlab registry name if not registry.<gitlab_instance>. By default, it's registry.gitlab.com")
-	rootCmd.Flags().StringVarP(&tagsListStr, "tags", "t", "", "filter tags to keep when moving images & registries (comma-separated)")
-	rootCmd.Flags().BoolVarP(&cfg.Verbose, "verbose", "v", cfg.Verbose, "verbose mode to debug your migration")
+	rootCmd.Flags().StringVarP(&cfg.GitLabToken, config.GITLAB_TOKEN, "g", cfg.GitLabToken, "your gitlab API token")
+	rootCmd.Flags().StringVarP(&cfg.OldGroupName, config.OLD_GROUP_NAME, "o", cfg.OldGroupName, "the group containing the projects you want to migrate")
+	rootCmd.Flags().StringVarP(&cfg.NewGroupName, config.NEW_GROUP_NAME, "n", cfg.NewGroupName, "the full path of group that will contain the migrated projects")
+	rootCmd.Flags().BoolVarP(&cfg.DryRun, config.DRY_RUN, "f", cfg.DryRun, "fake run")
+	rootCmd.Flags().StringVarP(&cfg.GitLabInstance, config.GITLAB_INSTANCE, "i", cfg.GitLabInstance, "change gitlab instance. By default, it's gitlab.com")
+	rootCmd.Flags().BoolVarP(&keepParentFlag, config.KEEP_PARENT, "k", false, "don't keep the parent group, transfer projects individually instead")
+	rootCmd.Flags().StringVarP(&projectsListStr, config.PROJECTS_LIST, "l", "", "list projects to move if you want to keep some in origin group (comma-separated)")
+	rootCmd.Flags().StringVarP(&cfg.DockerToken, config.DOCKER_PASSWORD, "p", cfg.DockerToken, "password for registry")
+	rootCmd.Flags().StringVarP(&cfg.GitLabRegistry, config.GITLAB_REGISTRY, "r", cfg.GitLabRegistry, "change gitlab registry name if not registry.<gitlab_instance>. By default, it's registry.gitlab.com")
+	rootCmd.Flags().StringVarP(&tagsListStr, config.TAGS_LIST, "t", "", "filter tags to keep when moving images & registries (comma-separated)")
+	rootCmd.Flags().BoolVarP(&cfg.Verbose, config.VERBOSE, "v", cfg.Verbose, "verbose mode to debug your migration")
 
 	//rootCmd.SetHelpTemplate(printUsage())
 }
@@ -70,7 +70,7 @@ func runMigration(cmd *cobra.Command, args []string) {
 	defer ui.Close()
 
 	// Load base config
-	cfg, err = LoadConfig()
+	cfg, err = LoadConfig(cmd)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to load config: %v\n", err)
 		os.Exit(1)
@@ -373,7 +373,7 @@ func printUsage() string {
 // 2. Environment variables
 // 3. Config file
 // 4. Interactive prompts (for missing mandatory values)
-func LoadConfig() (*config.Config, error) {
+func LoadConfig(cmd *cobra.Command) (*config.Config, error) {
 	cfg := &config.Config{
 		GitLabInstance: "gitlab.com",
 		KeepParent:     true,
@@ -384,6 +384,9 @@ func LoadConfig() (*config.Config, error) {
 
 	// Load from environment variables
 	config.LoadFromEnv(cfg)
+
+	// Load from command parameters
+	config.LoadFromCommand(cfg, cmd)
 
 	// Interactive prompts for missing mandatory values
 	if err := promptMissingValues(cfg); err != nil {

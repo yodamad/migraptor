@@ -2,8 +2,8 @@ package migration
 
 import (
 	"fmt"
-	"gitlab-transfer-script/internal/gitlab"
-	"gitlab-transfer-script/internal/ui"
+	"migraptor/internal/gitlab"
+	"migraptor/internal/ui"
 
 	gitlabCore "gitlab.com/gitlab-org/api/client-go"
 )

@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
 
@@ -24,6 +25,18 @@ type Config struct {
 	DryRun         bool
 	Verbose        bool
 }
+
+const GITLAB_TOKEN = "token"
+const GITLAB_INSTANCE = "instance"
+const GITLAB_REGISTRY = "registry"
+const DOCKER_PASSWORD = "docker-password"
+const OLD_GROUP_NAME = "old-group"
+const NEW_GROUP_NAME = "new-group"
+const PROJECTS_LIST = "projects"
+const TAGS_LIST = "tags"
+const KEEP_PARENT = "keep-parent"
+const DRY_RUN = "dry-run"
+const VERBOSE = "verbose"
 
 // loadConfigFile loads configuration from YAML/TOML/JSON config file
 func LoadConfigFile(cfg *Config) {
@@ -113,6 +126,48 @@ func LoadFromEnv(cfg *Config) {
 	}
 	if verbose := os.Getenv("VERBOSE"); verbose != "" {
 		cfg.Verbose = verbose == "true" || verbose == "1" || verbose == "yes"
+	}
+}
+
+// loadFromCommand from command lines arguments
+func LoadFromCommand(cfg *Config, cmd *cobra.Command) {
+	if cmd.Flags().Changed(GITLAB_TOKEN) {
+		cfg.GitLabToken = cmd.Flag(GITLAB_TOKEN).Value.String()
+	}
+	if cmd.Flags().Changed(OLD_GROUP_NAME) {
+		cfg.OldGroupName = cmd.Flag(OLD_GROUP_NAME).Value.String()
+	}
+	if cmd.Flags().Changed(NEW_GROUP_NAME) {
+		cfg.NewGroupName = cmd.Flag(NEW_GROUP_NAME).Value.String()
+	}
+	if cmd.Flags().Changed(PROJECTS_LIST) {
+		projects, _ := cmd.Flags().GetStringSlice(PROJECTS_LIST)
+		cfg.ProjectsList = projects
+	}
+	if cmd.Flags().Changed(TAGS_LIST) {
+		tags, _ := cmd.Flags().GetStringSlice(TAGS_LIST)
+		cfg.TagsList = tags
+	}
+	if cmd.Flags().Changed(KEEP_PARENT) {
+		keepParent, _ := cmd.Flags().GetBool(KEEP_PARENT)
+		cfg.KeepParent = keepParent
+	}
+	if cmd.Flags().Changed(DRY_RUN) {
+		dryRun, _ := cmd.Flags().GetBool(DRY_RUN)
+		cfg.DryRun = dryRun
+	}
+	if cmd.Flags().Changed(VERBOSE) {
+		verbose, _ := cmd.Flags().GetBool(VERBOSE)
+		cfg.Verbose = verbose
+	}
+	if cmd.Flags().Changed(DOCKER_PASSWORD) {
+		cfg.DockerToken = cmd.Flag(DOCKER_PASSWORD).Value.String()
+	}
+	if cmd.Flags().Changed(GITLAB_INSTANCE) {
+		cfg.GitLabInstance = cmd.Flag(GITLAB_INSTANCE).Value.String()
+	}
+	if cmd.Flags().Changed(GITLAB_REGISTRY) {
+		cfg.GitLabRegistry = cmd.Flag(GITLAB_REGISTRY).Value.String()
 	}
 }
 

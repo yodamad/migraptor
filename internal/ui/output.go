@@ -2,8 +2,8 @@ package ui
 
 import (
 	"fmt"
-	"gitlab-transfer-script/internal/config"
 	"log"
+	"migraptor/internal/config"
 	"os"
 	"time"
 
@@ -45,14 +45,27 @@ func Init(verboseMode bool) (*UI, error) {
 
 	verbose = verboseMode
 
-	// Open or create log file
+	// Open or create log file with fallback strategies
 	var err error
-	logFile, err = os.OpenFile("migrate.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-	if err != nil {
-		return nil, fmt.Errorf("failed to open log file: %w", err)
+	logPaths := []string{
+		"migrate.log",                     // Try current directory first
+		os.ExpandEnv("$HOME/migrate.log"), // Try home directory
+		"/tmp/migrate.log",                // Try temp directory
 	}
 
-	logger = log.New(logFile, "", log.LstdFlags)
+	for _, logPath := range logPaths {
+		logFile, err = os.OpenFile(logPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+		if err == nil {
+			logger = log.New(logFile, "", log.LstdFlags)
+			break
+		}
+	}
+
+	// If all paths fail, use stderr as fallback
+	if logFile == nil {
+		yellow.Printf("⚠️  Warning: Could not open log file, using stderr instead\n")
+		logger = log.New(os.Stderr, "", log.LstdFlags)
+	}
 
 	ui := &UI{
 		verbose: verboseMode,

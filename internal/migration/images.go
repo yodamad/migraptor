@@ -5,9 +5,9 @@ import (
 	"strings"
 	"time"
 
-	"gitlab-transfer-script/internal/docker"
-	"gitlab-transfer-script/internal/gitlab"
-	"gitlab-transfer-script/internal/ui"
+	"migraptor/internal/docker"
+	"migraptor/internal/gitlab"
+	"migraptor/internal/ui"
 )
 
 // ImageInfo holds information about a Docker image

@@ -25,7 +25,7 @@ This tool helps you transfer GitLab projects that contain images in Container Re
 ```bash
 # Clone the repository
 git clone <repository-url>
-cd gitlab-transfer-script
+cd migraptor
 
 # Build the binary
 go build -o migrate ./cmd/migrate
@@ -38,6 +38,37 @@ go build -o migrate ./cmd/migrate
 After building, you can:
 - Run directly: `./migrate [options]`
 - Install to PATH: `sudo cp migrate /usr/local/bin/`
+
+### Using Docker
+
+Build and run the tool in a Docker container:
+
+```bash
+# Build the Docker image
+docker build -t migraptor:latest .
+
+# Run with command-line options
+docker run --rm -i migraptor:latest -g <TOKEN> -o <OLD_GROUP> -n <NEW_GROUP>
+
+# Run with config file (mount current directory)
+docker run --rm -i -v $(pwd):/app migraptor:latest
+
+# Run with verbose output
+docker run --rm -i migraptor:latest -g <TOKEN> -o <OLD_GROUP> -n <NEW_GROUP> -v
+
+# Run with dry-run mode
+docker run --rm -i migraptor:latest -g <TOKEN> -o <OLD_GROUP> -n <NEW_GROUP> -f -v
+
+# View logs from container
+docker run --rm -i -v $(pwd):/app migraptor:latest -g <TOKEN> -o <OLD_GROUP> -n <NEW_GROUP> && cat migrate.log
+```
+
+**Note**: When using Docker:
+- The container uses a non-root user for security
+- Log files are written to `/tmp/migrate.log` inside the container by default (or stderr as fallback)
+- To persist logs, mount a volume: `docker run --rm -v $(pwd):/app migraptor:latest [options]`
+- Ensure Docker daemon socket is accessible if you need to pull/push container images
+- Pass your GitLab API token securely (as CLI flag or environment variable)
 
 ## ⚙️ Configuration
 
@@ -148,7 +179,7 @@ export NEW_GROUP_NAME="destination-group"
 The tool is organized into several packages:
 
 ```
-gitlab-transfer-script/
+migraptor/
 ├── cmd/migrate/          # Main CLI entry point
 │   └── main.go
 ├── internal/
