@@ -1,4 +1,14 @@
-# GitLab Migration Tool (Go)
+<p align="center">
+  <img src="assets/logo.png" alt="MigRaptor" width="200"/>
+</p>
+<h1 align="center">MigRaptor</h1>
+<p align="center">
+  <strong>GitLab projects & groups migration tool</strong>
+</p>
+<p align="center">
+  <a href="https://go.dev/"><img src="https://img.shields.io/badge/Go-1.25+-00ADD8?style=flat&logo=go&logoColor=white" alt="Go Version"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache%202-blue.svg" alt="License"></a>
+</p>
 
 A powerful CLI tool written in Go for migrating GitLab projects (including Docker container images) between groups. This tool automates the complex process of transferring projects with container registry images, which cannot be done through the GitLab UI.
 
