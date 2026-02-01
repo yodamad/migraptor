@@ -1,6 +1,6 @@
 # GitLab Migration Tool Configuration File
 # This file configures the GitLab project migration tool
-# Config file location: ./gitlab-migrate.yaml or ~/.gitlab-migrate.yaml
+# Config file location: ./gitlab-migraptor.yaml or ~/.gitlab-migraptor.yaml
 
 # ============================================================================
 # REQUIRED SETTINGS

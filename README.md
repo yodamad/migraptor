@@ -30,7 +30,7 @@ cd migraptor
 # Build the binary
 go build -o migraptor ./cmd/migrate
 
-# The binary will be created as 'migrate' in the current directory
+# The binary will be created as 'migraptor' in the current directory
 ```
 
 ### Using the Binary

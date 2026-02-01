@@ -188,19 +188,19 @@ func (c *Config) Validate() error {
 // GetConfigFilePath returns the path to the config file if it exists
 func GetConfigFilePath() string {
 	configPaths := []string{
-		"./gitlab-migrate.yaml",
-		"./gitlab-migrate.yml",
-		"./gitlab-migrate.json",
-		"./gitlab-migrate.toml",
+		"./gitlab-migraptor.yaml",
+		"./gitlab-migraptor.yml",
+		"./gitlab-migraptor.json",
+		"./gitlab-migraptor.toml",
 	}
 
 	homeDir, err := os.UserHomeDir()
 	if err == nil {
 		configPaths = append(configPaths,
-			filepath.Join(homeDir, ".gitlab-migrate.yaml"),
-			filepath.Join(homeDir, ".gitlab-migrate.yml"),
-			filepath.Join(homeDir, ".gitlab-migrate.json"),
-			filepath.Join(homeDir, ".gitlab-migrate.toml"),
+			filepath.Join(homeDir, ".gitlab-migraptor.yaml"),
+			filepath.Join(homeDir, ".gitlab-migraptor.yml"),
+			filepath.Join(homeDir, ".gitlab-migraptor.json"),
+			filepath.Join(homeDir, ".gitlab-migraptor.toml"),
 		)
 	}
 
