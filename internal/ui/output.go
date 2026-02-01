@@ -12,22 +12,17 @@ import (
 
 var (
 	// Color definitions matching bash script
-	black        = color.New(color.FgBlack)
-	red          = color.New(color.FgRed)
-	green        = color.New(color.FgGreen)
-	yellow       = color.New(color.FgYellow)
-	blue         = color.New(color.FgBlue)
-	magenta      = color.New(color.FgMagenta)
-	cyan         = color.New(color.FgCyan)
-	gray         = color.New(color.FgHiBlack)
-	white        = color.New(color.FgWhite)
-	lightRed     = color.New(color.FgHiRed)
-	lightGreen   = color.New(color.FgHiGreen)
-	lightYellow  = color.New(color.FgHiYellow)
-	lightBlue    = color.New(color.FgHiBlue)
-	lightMagenta = color.New(color.FgHiMagenta)
-	lightCyan    = color.New(color.FgHiCyan)
-	lightGray    = color.New(color.FgWhite)
+	red         = color.New(color.FgRed)
+	green       = color.New(color.FgGreen)
+	yellow      = color.New(color.FgYellow)
+	blue        = color.New(color.FgBlue)
+	magenta     = color.New(color.FgMagenta)
+	cyan        = color.New(color.FgCyan)
+	gray        = color.New(color.FgHiBlack)
+	white       = color.New(color.FgWhite)
+	lightGreen  = color.New(color.FgHiGreen)
+	lightYellow = color.New(color.FgHiYellow)
+	lightBlue   = color.New(color.FgHiBlue)
 
 	logFile *os.File
 	logger  *log.Logger
@@ -329,7 +324,7 @@ func (ui *UI) PrintTransferringProject(projectName string, groupID interface{}) 
 // PrintMoveResult prints move result
 func (ui *UI) PrintMoveResult(result string) {
 	if result == "200" {
-		fmt.Printf("⏩ Project transfer done\n", result)
+		fmt.Printf("⏩ Project transfer done\n")
 	} else {
 		fmt.Printf("😱 Project transfer failed with error %s\n", result)
 	}

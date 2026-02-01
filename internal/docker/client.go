@@ -145,7 +145,7 @@ func (c *Client) PullImage(imageRef string) error {
 func (c *Client) TagImage(sourceImage, targetImage string) error {
 	err := c.cli.ImageTag(c.ctx, sourceImage, targetImage)
 	if err != nil {
-		return fmt.Errorf("failed to tag image %s as %s: %w", sourceImage, targetImage)
+		return fmt.Errorf("failed to tag image %s as %s: %w", sourceImage, targetImage, err)
 	}
 	return nil
 }
@@ -169,7 +169,7 @@ func (c *Client) PushImage(imageRef string) error {
 
 // ImageExists checks if an image exists locally
 func (c *Client) ImageExists(imageRef string) (bool, error) {
-	_, _, err := c.cli.ImageInspectWithRaw(c.ctx, imageRef)
+	_, err := c.cli.ImageInspect(c.ctx, imageRef)
 	if err != nil {
 		if dockerclient.IsErrNotFound(err) {
 			return false, nil
