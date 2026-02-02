@@ -1,4 +1,5 @@
 .idea/
 migrate.log
 gitlab-migraptor.yaml
+dist/
 
