@@ -1,11 +1,9 @@
 name: Release
 run-name: Release ${{ github.event.inputs.tag }}
 on:
-  workflow_dispatch:
-    inputs:
-      tag:
-        description: 'Release tag name (starting with a `v`)'
-        required: true
+  push:
+    tags:
+      - '*'
 
 jobs:
   test-job:
