@@ -94,11 +94,11 @@ The tool supports multiple configuration methods with the following priority (hi
 
 ### Configuration File
 
-Create a config file named `gitlab-migrate.yaml` (or `.yml`, `.json`, `.toml`) in:
-- Current directory (`./gitlab-migrate.yaml`)
-- Home directory (`~/.gitlab-migrate.yaml`)
+Create a config file named `gitlab-migraptor.yaml` (or `.yml`, `.json`, `.toml`) in:
+- Current directory (`./gitlab-migraptor.yaml`)
+- Home directory (`~/.gitlab-migraptor.yaml`)
 
-Example `gitlab-migrate.yaml`:
+Example `gitlab-migraptor.yaml`:
 ```yaml
 gitlab_token: "your-gitlab-api-token"
 gitlab_instance: "gitlab.com"
@@ -129,8 +129,18 @@ export NEW_GROUP_NAME="destination-group"
 ### Basic Usage
 
 ```bash
-./migraptor -g <GITLAB_TOKEN> -o <OLD_GROUP_NAME> -n <NEW_GROUP_NAME>
+migraptor -g <GITLAB_TOKEN> -o <OLD_GROUP_NAME> -n <NEW_GROUP_NAME>
 ```
+
+### Dry Run
+
+Always test with `-f` (dry-run) flag first:
+
+```bash
+migraptor -g <TOKEN> -o <OLD_GROUP> -n <NEW_GROUP> -f -v
+```
+
+This will show you what would happen without making actual changes.
 
 ### Command-Line Options
 
@@ -153,12 +163,12 @@ export NEW_GROUP_NAME="destination-group"
 
 #### Example 1: Simple Migration
 ```bash
-./migraptor -g glpat-xxxxx -o old-group -n new-group
+migraptor -g glpat-xxxxx -o old-group -n new-group
 ```
 
-#### Example 2: Migrate Specific Projects with Tag Filter
+#### Example 2: MigRaptor Specific Projects with Tag Filter
 ```bash
-./migraptor \
+migraptor \
   -g glpat-xxxxx \
   -o source-group \
   -n target-group \
@@ -168,7 +178,7 @@ export NEW_GROUP_NAME="destination-group"
 
 #### Example 3: Dry Run (Test Migration)
 ```bash
-./migraptor \
+migraptor \
   -g glpat-xxxxx \
   -o old-group \
   -n new-group \
@@ -178,7 +188,7 @@ export NEW_GROUP_NAME="destination-group"
 
 #### Example 4: Transfer Projects Individually (Don't Keep Parent)
 ```bash
-./migraptor \
+migraptor \
   -g glpat-xxxxx \
   -o old-group \
   -n new-group \
@@ -277,7 +287,7 @@ migraptor/
 Always test with `-f` (dry-run) flag first:
 
 ```bash
-./migraptor -g <TOKEN> -o <OLD_GROUP> -n <NEW_GROUP> -f -v
+migraptor -g <TOKEN> -o <OLD_GROUP> -n <NEW_GROUP> -f -v
 ```
 
 This will show you what would happen without making actual changes.
