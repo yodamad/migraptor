@@ -40,7 +40,7 @@ const VERBOSE = "verbose"
 
 // loadConfigFile loads configuration from YAML/TOML/JSON config file
 func LoadConfigFile(cfg *Config) {
-	viper.SetConfigName("gitlab-migrate")
+	viper.SetConfigName("gitlab-migraptor")
 	viper.SetConfigType("yaml")
 	viper.AddConfigPath(".")
 	viper.AddConfigPath("$HOME")
