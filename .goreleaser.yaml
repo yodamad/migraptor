@@ -23,7 +23,7 @@ builds:
       - -s -w -X github.com/yodamad/migraptor/build.Version={{.Version}} -X github.com/yodamad/migraptor/build.Commit={{.Commit}} -X github.com/yodamad/migraptor/build.Date={{.Date}}
 
 archives:
-  - format: tar.gz
+  - formats: tar.gz
     # this name template makes the OS and Arch compatible with the results of `uname`.
     name_template: >-
       {{ .ProjectName }}_
