@@ -59,14 +59,15 @@ release:
     ## Enjoy 🍹
     📆 {{ .Now.Format "2006-01-02" }} - Copyright @yodamad
 
-brews:
+homebrew_casks:
   - name: migraptor
     homepage: https://github.com/yodamad/migraptor
     commit_author:
       name: yodamad
       email: mvincent.it@gmail.com
     license: Apache-2.0
-    url_template: "https://github.com/yodamad/migraptor/releases/download/{{ .Tag }}/{{ .ArtifactName }}"
+    url:
+      template: "https://github.com/yodamad/migraptor/releases/download/{{ .Tag }}/{{ .ArtifactName }}"
     repository:
       owner: yodamad
       name: homebrew-tools
