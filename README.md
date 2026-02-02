@@ -41,44 +41,47 @@ cd migraptor
 go build -o migraptor ./cmd/migrate
 
 # The binary will be created as 'migraptor' in the current directory
+./migraptor [options]
 ```
 
-### Using the Binary
+### Install via Homebrew (macOS)
 
-After building, you can:
-- Run directly: `./migraptor [options]`
-- Install to PATH: `sudo cp migraptor /usr/local/bin/`
+If you are on macOS you can install the prebuilt package via Homebrew Cask (provided by the project tap):
+
+```bash
+brew install --cask yodamad/tools/migraptor
+```
+
+This installs the `migraptor` binary system-wide (follow Homebrew output for the exact install path).
 
 ### Using Docker
 
-Build and run the tool in a Docker container:
+The project provides a Docker image published on Docker Hub. Use that image instead of building locally if you prefer:
 
 ```bash
-# Build the Docker image
-docker build -t migraptor:latest .
-
 # Run with command-line options
-docker run --rm -i migraptor:latest -g <TOKEN> -o <OLD_GROUP> -n <NEW_GROUP>
+docker run -i --rm yodamad/migraptor:0.4.0 -g <TOKEN> -o <OLD_GROUP> -n <NEW_GROUP>
 
 # Run with config file (mount current directory)
-docker run --rm -i -v $(pwd):/app migraptor:latest
+docker run -i --rm -v $(pwd):/app yodamad/migraptor:0.4.0
 
 # Run with verbose output
-docker run --rm -i migraptor:latest -g <TOKEN> -o <OLD_GROUP> -n <NEW_GROUP> -v
+docker run -i --rm yodamad/migraptor:0.4.0 -g <TOKEN> -o <OLD_GROUP> -n <NEW_GROUP> -v
 
 # Run with dry-run mode
-docker run --rm -i migraptor:latest -g <TOKEN> -o <OLD_GROUP> -n <NEW_GROUP> -f -v
+docker run -i --rm yodamad/migraptor:0.4.0 -g <TOKEN> -o <OLD_GROUP> -n <NEW_GROUP> -f -v
 
-# View logs from container
-docker run --rm -i -v $(pwd):/app migraptor:latest -g <TOKEN> -o <OLD_GROUP> -n <NEW_GROUP> && cat migrate.log
+# Persist logs: mount current directory so migrate.log is written to host
+docker run -i --rm -v $(pwd):/app yodamad/migraptor:0.4.0 -g <TOKEN> -o <OLD_GROUP> -n <NEW_GROUP>
+# then on host
+cat migrate.log
 ```
 
-**Note**: When using Docker:
-- The container uses a non-root user for security
-- Log files are written to `/tmp/migrate.log` inside the container by default (or stderr as fallback)
-- To persist logs, mount a volume: `docker run --rm -v $(pwd):/app migraptor:latest [options]`
-- Ensure Docker daemon socket is accessible if you need to pull/push container images
-- Pass your GitLab API token securely (as CLI flag or environment variable)
+**Notes when using the Docker image**:
+- The public image is `yodamad/migraptor:latest` on Docker Hub.
+- The container runs as a non-root user for security; mount a host directory (e.g. `$(pwd)`) to persist logs and config.
+- If you need to interact with your local Docker daemon (to pull/push images from registries), mount the Docker socket: `-v /var/run/docker.sock:/var/run/docker.sock` and ensure permissions are correct.
+- Pass your GitLab API token securely (via flags or environment variables). Avoid embedding tokens in images.
 
 ## ⚙️ Configuration
 
