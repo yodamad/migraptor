@@ -323,7 +323,7 @@ func (ui *UI) PrintTransferringProject(projectName string, groupID interface{}) 
 
 // PrintMoveResult prints move result
 func (ui *UI) PrintMoveResult(result string) {
-	if result == "200" {
+	if result == "201" {
 		fmt.Printf("⏩ Project transfer done\n")
 	} else {
 		fmt.Printf("😱 Project transfer failed with error %s\n", result)

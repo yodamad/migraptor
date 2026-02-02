@@ -145,7 +145,7 @@ func (im *ImageMigrator) BackupImages(project *ProjectInfo, tagFilter []string) 
 	return allImages, nil
 }
 
-func (im *ImageMigrator) CheckIfRemainingImages(projects []ProjectInfo, tagFilter []string) error {
+func (im *ImageMigrator) CheckIfRemainingImages(projects map[int]*ProjectInfo, tagFilter []string) error {
 	// Wait for images to be deleted from registry if there is any temporization
 	im.consoleUI.Info("🔄 Waiting for images to be deleted from registry...")
 	// Wait until images are deleted from registry before proceeding

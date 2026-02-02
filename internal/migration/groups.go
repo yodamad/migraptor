@@ -2,6 +2,7 @@ package migration
 
 import (
 	"fmt"
+	"maps"
 	"migraptor/internal/gitlab"
 	"migraptor/internal/ui"
 
@@ -34,6 +35,35 @@ func (gm *GroupMigrator) SearchGroup(name string) (*gitlabCore.Group, error) {
 	}
 
 	return result, nil
+}
+
+func (gm *GroupMigrator) GetSubGroupsAndProjects(groupID int64, filterList []string) (map[int64]*gitlabCore.Group, map[int]*ProjectInfo, error) {
+
+	allProjects := make(map[int]*ProjectInfo)
+	allSubGroups := make(map[int64]*gitlabCore.Group)
+
+	subgroups, err := gm.client.GetSubGroups(groupID)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to get subgroups for group %d: %w", groupID, err)
+	}
+
+	for _, subgroup := range subgroups {
+		subGrpID := subgroup.ID
+		allSubGroups[subGrpID] = &*subgroup
+		subprojects, _, _ := gm.client.ListProjects(int(subGrpID))
+		for _, subproject := range FilterProjects(subprojects, filterList) {
+			allProjects[subproject.ID] = &subproject
+		}
+
+		innerGroups, innerProjects, err := gm.GetSubGroupsAndProjects(subGrpID, filterList)
+		maps.Copy(allProjects, innerProjects)
+		maps.Copy(allSubGroups, innerGroups)
+		if err != nil {
+			return nil, nil, fmt.Errorf("failed to get inner subgroups for group %d: %w", subGrpID, err)
+		}
+	}
+
+	return allSubGroups, allProjects, nil
 }
 
 // TransferGroup transfers a group to another group

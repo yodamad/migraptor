@@ -3,17 +3,18 @@ package main
 import (
 	"bufio"
 	"fmt"
+	"maps"
 	"os"
 	"strings"
 	"time"
-
-	"github.com/spf13/cobra"
 
 	"migraptor/internal/config"
 	"migraptor/internal/docker"
 	"migraptor/internal/gitlab"
 	"migraptor/internal/migration"
 	"migraptor/internal/ui"
+
+	"github.com/spf13/cobra"
 )
 
 var (
@@ -216,12 +217,26 @@ func runMigration(cmd *cobra.Command, args []string) {
 		os.Exit(1)
 	}
 
+	allProjects := make(map[int]*migration.ProjectInfo)
+	for _, proj := range projects {
+		allProjects[proj.ID] = &proj
+	}
+
+	subGroups, subProjects, err := groupMigrator.GetSubGroupsAndProjects(groupFound.ID, cfg.ProjectsList)
+
+	maps.Copy(allProjects, subProjects)
+
+	if len(subGroups) > 0 {
+		consoleUI.Info("📂 Found %d sub-groups to consider", len(subGroups))
+	}
+	consoleUI.Info("📦 Found %d projects to migrate", len(allProjects))
+
 	// Store image lists per project
 	projectImages := make(map[int][]string)
 
 	// Backup phase: For each project
-	for _, project := range projects {
-		if !migration.ShouldMigrateProject(project, cfg.ProjectsList, cfg.KeepParent) {
+	for _, project := range allProjects {
+		if !migration.ShouldMigrateProject(*project, cfg.ProjectsList, cfg.KeepParent) {
 			consoleUI.Info("Not migrating %s, not in filter list", project.Path)
 			continue
 		}
@@ -238,7 +253,7 @@ func runMigration(cmd *cobra.Command, args []string) {
 
 		// Backup images if registry is enabled
 		if project.ContainerRegistryEnabled {
-			images, err := imageMigrator.BackupImages(&project, cfg.TagsList)
+			images, err := imageMigrator.BackupImages(project, cfg.TagsList)
 			consoleUI.Info("👀 Found %d registries in project %s", len(project.RegistryRepositoriesIDs), project.Path)
 			if err != nil {
 				consoleUI.Error("Failed to backup images: %v", err)
@@ -248,7 +263,7 @@ func runMigration(cmd *cobra.Command, args []string) {
 		}
 	}
 	if len(projectImages) > 0 {
-		if err := imageMigrator.CheckIfRemainingImages(projects, cfg.TagsList); err != nil {
+		if err := imageMigrator.CheckIfRemainingImages(allProjects, cfg.TagsList); err != nil {
 			consoleUI.Error("Failed to check if remaining images: %v", err)
 			os.Exit(99)
 		}
@@ -292,8 +307,8 @@ func runMigration(cmd *cobra.Command, args []string) {
 	}
 
 	// Restore phase: For each project
-	for _, project := range projects {
-		if !migration.ShouldMigrateProject(project, cfg.ProjectsList, cfg.KeepParent) {
+	for _, project := range allProjects {
+		if !migration.ShouldMigrateProject(*project, cfg.ProjectsList, cfg.KeepParent) {
 			continue
 		}
 

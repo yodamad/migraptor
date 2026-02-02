@@ -5,6 +5,8 @@ import (
 
 	"migraptor/internal/gitlab"
 	"migraptor/internal/ui"
+
+	gitlabCore "gitlab.com/gitlab-org/api/client-go"
 )
 
 // ProjectInfo holds information about a project
@@ -40,6 +42,10 @@ func (pm *ProjectMigrator) ListProjects(groupID int64, filterList []string) ([]P
 		return nil, fmt.Errorf("failed to list projects: %w", err)
 	}
 
+	return FilterProjects(projects, filterList), nil
+}
+
+func FilterProjects(projects []*gitlabCore.Project, filterList []string) []ProjectInfo {
 	var result []ProjectInfo
 	for _, project := range projects {
 		// Apply filter if provided
@@ -68,8 +74,7 @@ func (pm *ProjectMigrator) ListProjects(groupID int64, filterList []string) ([]P
 
 		result = append(result, info)
 	}
-
-	return result, nil
+	return result
 }
 
 // UnarchiveProject unarchives a project

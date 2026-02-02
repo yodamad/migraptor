@@ -93,6 +93,14 @@ func (c *Client) TransferGroup(groupID, targetGroupID int) (*gitlab.Response, er
 	return resp, nil
 }
 
+func (c *Client) GetSubGroups(groupID int64) ([]*gitlab.Group, error) {
+	subgroups, _, err := c.client.Groups.ListSubGroups(groupID, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list subgroups: %w", err)
+	}
+	return subgroups, nil
+}
+
 // ListProjects lists projects in a group
 func (c *Client) ListProjects(groupID int) ([]*gitlab.Project, *gitlab.Response, error) {
 	opt := &gitlab.ListGroupProjectsOptions{
