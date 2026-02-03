@@ -177,6 +177,22 @@ func (c *Client) DeleteRegistryRepository(projectID, repositoryID int) (*gitlab.
 	return resp, nil
 }
 
+// DeleteRegistryRepositoryTag deletes a specific tag from a registry repository
+func (c *Client) DeleteRegistryRepositoryTag(projectID, repositoryID int, tagName string) (*gitlab.Response, error) {
+	// Use the HTTP client directly since DeleteRegistryRepositoryTag might not be in the SDK
+	req, err := c.client.NewRequest("DELETE", fmt.Sprintf("/projects/%d/registry/repositories/%d/tags/%s", projectID, repositoryID, tagName), nil, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create delete tag request: %w", err)
+	}
+
+	resp, err := c.client.Do(req, nil)
+	if err != nil {
+		return resp, fmt.Errorf("failed to delete registry repository tag: %w", err)
+	}
+
+	return resp, nil
+}
+
 // GetCurrentUser gets the current authenticated user
 func (c *Client) GetCurrentUser() (*gitlab.User, *gitlab.Response, error) {
 	return c.client.Users.CurrentUser()

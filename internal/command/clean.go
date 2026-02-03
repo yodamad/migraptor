@@ -8,6 +8,7 @@ import (
 	"migraptor/internal/ui"
 	"os"
 
+	tea "github.com/charmbracelet/bubbletea"
 	"github.com/spf13/cobra"
 )
 
@@ -40,7 +41,6 @@ func cleanImages(cmd *cobra.Command) {
 	// Initialize migrators
 	groupMigrator := migration.NewGroupMigrator(gitlabClient, cfg.DryRun, consoleUI)
 	projectMigrator := migration.NewProjectMigrator(gitlabClient, cfg.DryRun, consoleUI)
-	// imageMigrator := migration.NewImageMigrator(gitlabClient, dockerClient, cfg.DryRun, consoleUI)
 
 	// Search for source group
 	consoleUI.Info("🔍 Searching for source group...")
@@ -81,13 +81,59 @@ func cleanImages(cmd *cobra.Command) {
 	if len(subGroups) > 0 {
 		consoleUI.Info("📂 Found %d sub-groups to consider", len(subGroups))
 	}
-	consoleUI.Info("📦 Found %d projects to migrate", len(allProjects))
+	consoleUI.Info("📦 Found %d projects", len(allProjects))
 
-	// Store image lists per project
-	// projectImages := make(map[int][]string)
+	// Collect all images from all projects
+	consoleUI.Info("🔍 Collecting images from all registries...")
+	imageMigrator := migration.NewImageMigrator(gitlabClient, nil, cfg.DryRun, consoleUI)
+	allImagesPtr, err := imageMigrator.GetAllImagesFromProjects(allProjects, cfg.TagsList)
+	if err != nil {
+		consoleUI.Error("Failed to collect images: %v", err)
+		os.Exit(1)
+	}
 
-	// Backup phase: For each project
-	for _, project := range allProjects {
-		consoleUI.Info("📦 Working on project %s (ID: %d)", project.Name, project.ID)
+	if len(allImagesPtr) == 0 {
+		consoleUI.Info("No images found in any registry")
+		return
+	}
+
+	// Convert pointers to values
+	allImages := make([]ui.ImageItem, len(allImagesPtr))
+	for i, img := range allImagesPtr {
+		allImages[i] = *img
+	}
+
+	consoleUI.Info("📸 Found %d images across all registries", len(allImages))
+	consoleUI.Info("Opening image selector...")
+
+	// Create and run bubbletea program
+	model := ui.NewImageSelectorModel(allImages, gitlabClient, cfg.DryRun)
+	program := tea.NewProgram(model, tea.WithAltScreen())
+
+	finalModel, err := program.Run()
+	if err != nil {
+		consoleUI.Error("Failed to run image selector: %v", err)
+		os.Exit(1)
+	}
+
+	// Get final model state and print selected images
+	if selectorModel, ok := finalModel.(*ui.ImageSelectorModel); ok {
+		selectedImages := selectorModel.GetSelectedImages()
+		if len(selectedImages) > 0 {
+			consoleUI.Info("")
+			consoleUI.Info("========================================")
+			consoleUI.Info("Selected Images Summary")
+			consoleUI.Info("========================================")
+			for _, img := range selectedImages {
+				consoleUI.Info("Project: %s", img.ProjectName)
+				consoleUI.Info("Registry: %s", img.RegistryPath)
+				consoleUI.Info("Image: %s (%s)", img.ImageInfo.Name, img.ImageInfo.Location)
+				consoleUI.Info("")
+			}
+			consoleUI.Info("Total: %d selected image(s)", len(selectedImages))
+			consoleUI.Info("========================================")
+		} else {
+			consoleUI.Info("No images were selected.")
+		}
 	}
 }

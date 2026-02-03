@@ -229,3 +229,49 @@ func (im *ImageMigrator) RestoreImages(imageList []string, oldFullPath, newGroup
 
 	return nil
 }
+
+// GetAllImagesFromProjects collects all images from all projects and registries
+func (im *ImageMigrator) GetAllImagesFromProjects(projects map[int]*ProjectInfo, tagFilter []string) ([]*ui.ImageItem, error) {
+	var allImages []*ui.ImageItem
+
+	for _, project := range projects {
+		if !project.ContainerRegistryEnabled {
+			continue
+		}
+
+		repositories, _, err := im.gitlabClient.ListRegistryRepositories(project.ID)
+		if err != nil {
+			im.consoleUI.Debug("Failed to list registry repositories for project %d: %v", project.ID, err)
+			continue
+		}
+
+		if len(repositories) == 0 {
+			continue
+		}
+
+		for _, repo := range repositories {
+			images, err := im.GetImages(project.ID, int(repo.ID), tagFilter)
+			if err != nil {
+				im.consoleUI.Debug("Error occurred during image search on project %d - repository %d: %v", project.ID, repo.ID, err)
+				continue
+			}
+
+			for _, img := range images {
+				allImages = append(allImages, &ui.ImageItem{
+					ImageInfo: ui.ImageInfo{
+						Name:     img.Name,
+						Path:     img.Path,
+						Location: img.Location,
+					},
+					ProjectID:    project.ID,
+					ProjectName:  project.Name,
+					RegistryID:   int(repo.ID),
+					RegistryPath: repo.Path,
+					Selected:     false,
+				})
+			}
+		}
+	}
+
+	return allImages, nil
+}
