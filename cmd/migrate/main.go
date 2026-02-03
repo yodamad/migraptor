@@ -1,16 +1,14 @@
 package main
 
 import (
-	"bufio"
 	"fmt"
 	"maps"
+	"migraptor/internal/check"
 	"os"
 	"strings"
 	"time"
 
 	"migraptor/internal/config"
-	"migraptor/internal/docker"
-	"migraptor/internal/gitlab"
 	"migraptor/internal/migration"
 	"migraptor/internal/ui"
 
@@ -18,7 +16,6 @@ import (
 )
 
 var (
-	cfg       *config.Config = &config.Config{}
 	consoleUI *ui.UI
 )
 
@@ -39,137 +36,39 @@ from a group to another, as it's not possible through GitLab UI.`,
 
 func init() {
 	// Define flags matching bash script interface
-	rootCmd.Flags().StringVarP(&cfg.GitLabToken, config.GITLAB_TOKEN, "g", cfg.GitLabToken, "your gitlab API token")
-	rootCmd.Flags().StringVarP(&cfg.OldGroupName, config.OLD_GROUP_NAME, "o", cfg.OldGroupName, "the group containing the projects you want to migrate")
-	rootCmd.Flags().StringVarP(&cfg.NewGroupName, config.NEW_GROUP_NAME, "n", cfg.NewGroupName, "the full path of group that will contain the migrated projects")
-	rootCmd.Flags().BoolVarP(&cfg.DryRun, config.DRY_RUN, "f", cfg.DryRun, "fake run")
-	rootCmd.Flags().StringVarP(&cfg.GitLabInstance, config.GITLAB_INSTANCE, "i", cfg.GitLabInstance, "change gitlab instance. By default, it's gitlab.com")
-	rootCmd.Flags().BoolVarP(&keepParentFlag, config.KEEP_PARENT, "k", false, "don't keep the parent group, transfer projects individually instead")
-	rootCmd.Flags().StringVarP(&projectsListStr, config.PROJECTS_LIST, "l", "", "list projects to move if you want to keep some in origin group (comma-separated)")
-	rootCmd.Flags().StringVarP(&cfg.DockerToken, config.DOCKER_PASSWORD, "p", cfg.DockerToken, "password for registry")
-	rootCmd.Flags().StringVarP(&cfg.GitLabRegistry, config.GITLAB_REGISTRY, "r", cfg.GitLabRegistry, "change gitlab registry name if not registry.<gitlab_instance>. By default, it's registry.gitlab.com")
-	rootCmd.Flags().StringVarP(&tagsListStr, config.TAGS_LIST, "t", "", "filter tags to keep when moving images & registries (comma-separated)")
-	rootCmd.Flags().BoolVarP(&cfg.Verbose, config.VERBOSE, "v", cfg.Verbose, "verbose mode to debug your migration")
+	// Note: Flags are not bound to struct fields - they will be loaded via Viper
+	rootCmd.Flags().StringP(config.GITLAB_TOKEN, "g", "", "your gitlab API token")
+	rootCmd.Flags().StringP(config.OLD_GROUP_NAME, "o", "", "the group containing the projects you want to migrate")
+	rootCmd.Flags().StringP(config.NEW_GROUP_NAME, "n", "", "the full path of group that will contain the migrated projects")
+	rootCmd.Flags().BoolP(config.DRY_RUN, "f", false, "fake run")
+	rootCmd.Flags().StringP(config.GITLAB_INSTANCE, "i", "", "change gitlab instance. By default, it's gitlab.com")
+	rootCmd.Flags().BoolP(config.KEEP_PARENT, "k", false, "don't keep the parent group, transfer projects individually instead")
+	rootCmd.Flags().StringSliceP(config.PROJECTS_LIST, "l", []string{}, "list projects to move if you want to keep some in origin group (comma-separated)")
+	rootCmd.Flags().StringP(config.DOCKER_PASSWORD, "p", "", "password for registry")
+	rootCmd.Flags().StringP(config.GITLAB_REGISTRY, "r", "", "change gitlab registry name if not registry.<gitlab_instance>. By default, it's registry.gitlab.com")
+	rootCmd.Flags().StringSliceP(config.TAGS_LIST, "t", []string{}, "filter tags to keep when moving images & registries (comma-separated)")
+	rootCmd.Flags().BoolP(config.VERBOSE, "v", false, "verbose mode to debug your migration")
 
-	//rootCmd.SetHelpTemplate(printUsage())
+	rootCmd.SetHelpTemplate(ui.PrintUsage())
+
+	rootCmd.AddCommand()
 }
 
-var (
-	projectsListStr string
-	tagsListStr     string
-	keepParentFlag  bool
-)
-
 func runMigration(cmd *cobra.Command, args []string) {
-	// Initialize UI
 	currentUI, err := ui.Init(false)
-	consoleUI = currentUI
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to initialize UI: %v\n", err)
 		os.Exit(1)
 	}
 	defer ui.Close()
 
-	// Load base config
-	cfg, err = LoadConfig(cmd)
+	gitlabClient, dockerClient, cfg, err := check.CheckBeforeStarting(currentUI, cmd)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Failed to load config: %v\n", err)
-		os.Exit(1)
-	}
-	// Update keep-parent from flag
-	// In bash script: -k sets keep_parent="n" (don't keep parent)
-	// Default is keep_parent="y" (keep parent, transfer whole group)
-	if keepParentFlag {
-		cfg.KeepParent = false // -k flag means don't keep parent
-	}
-	// Otherwise keep the default value from config (true)
-
-	// Parse comma-separated lists
-	if projectsListStr != "" {
-		cfg.ProjectsList = strings.Split(projectsListStr, ",")
-		for i := range cfg.ProjectsList {
-			cfg.ProjectsList[i] = strings.TrimSpace(cfg.ProjectsList[i])
-		}
-	}
-
-	if tagsListStr != "" {
-		cfg.TagsList = strings.Split(tagsListStr, ",")
-		for i := range cfg.TagsList {
-			cfg.TagsList[i] = strings.TrimSpace(cfg.TagsList[i])
-		}
-	}
-
-	// Set default registry if not set
-	if cfg.GitLabRegistry == "" {
-		cfg.GitLabRegistry = "registry." + cfg.GitLabInstance
-	}
-
-	// Use GitLab token as Docker token if not set
-	if cfg.DockerToken == "" {
-		cfg.DockerToken = cfg.GitLabToken
-	}
-
-	// Validate configuration
-	if err := cfg.Validate(); err != nil {
-		consoleUI.Error("Configuration error: %v", err)
-		printUsage()
+		fmt.Fprintf(os.Stderr, "Failed to check before starting: %v\n", err)
 		os.Exit(1)
 	}
 
-	// Print start message
-	consoleUI.PrintMigrationStart(cfg)
-
-	// Initialize GitLab client
-	consoleUI.Info("🦊 Creating GitLab client...")
-	gitlabClient, err := gitlab.NewClient(cfg.GitLabToken, cfg.GitLabInstance)
-	if err != nil {
-		consoleUI.Error("Failed to create GitLab client: %v", err)
-		os.Exit(1)
-	}
-
-	// Check GitLab connection
-	if err := gitlabClient.CheckConnection(); err != nil {
-		consoleUI.Error("Failed to connect to GitLab: %v", err)
-		os.Exit(1)
-	}
-	consoleUI.Success("GitLab client created successfully\n")
-
-	// Initialize Docker client
-	consoleUI.Info("🐳 Creating Docker client...")
-	dockerClient, err := docker.NewClient()
-	if err != nil {
-		consoleUI.Error("Failed to create Docker client: %v", err)
-		os.Exit(1)
-	}
-	defer dockerClient.Close()
-	consoleUI.Success("Docker client created successfully\n")
-
-	// Check Docker is running
-	if err := dockerClient.CheckDockerRunning(); err != nil {
-		consoleUI.PrintDockerNotStarted()
-		os.Exit(99)
-	}
-	consoleUI.Success("Docker is running\n")
-
-	// Check Docker registry login
-	consoleUI.Info("🔑 Checking registry login...")
-
-	// Try to login automatically
-	user, _, err := gitlabClient.GetCurrentUser()
-	if err != nil {
-		consoleUI.PrintDockerLoginFailed()
-		os.Exit(99)
-	}
-
-	authInfo, err := dockerClient.Login(cfg.GitLabRegistry, user.Username, cfg.DockerToken)
-	if err != nil {
-		consoleUI.PrintDockerLoginFailed()
-		os.Exit(99)
-	}
-	dockerClient.SetAuthInfo(authInfo)
-	consoleUI.PrintDockerLoginSuccess()
-
-	consoleUI.Success("Registry login checked successfully\n")
+	consoleUI = currentUI
 
 	// Initialize migrators
 	groupMigrator := migration.NewGroupMigrator(gitlabClient, cfg.DryRun, consoleUI)
@@ -356,106 +255,4 @@ func runMigration(cmd *cobra.Command, args []string) {
 	if cfg.DryRun {
 		consoleUI.PrintDryRunSuccess()
 	}
-}
-
-func printUsage() string {
-	fmt.Println("Usage : ./migrate -g <GITLAB_TOKEN> -o <OLD_GROUP_NAME> -n <NEW_GROUP_NAME>")
-	fmt.Println("=============================================================================")
-	fmt.Println("Mandatory options")
-	fmt.Println("-----------------")
-	fmt.Println("-g : your gitlab API token")
-	fmt.Println("-n : the full path of group that will contain the migrated projects")
-	fmt.Println("-o : the group containing the projects you want to migrate")
-	fmt.Println("-s : the simple path of group containing the projects you want to migrate, in same parent group then original one")
-	fmt.Println("-----------------")
-	fmt.Println("Other options")
-	fmt.Println("-------------")
-	fmt.Println("-d : parent group id (if there are multiple with same name on the instance)")
-	fmt.Println("-f : fake run")
-	fmt.Println("-h : display usage")
-	fmt.Println("-i : change gitlab instance. By default, it's gitlab.com")
-	fmt.Println("-k : keep the group containing the project, it will be moved into group specified with -n")
-	fmt.Println("-l : list projects to move if you want to keep some in origin group")
-	fmt.Println("-p : password for registry")
-	fmt.Println("-r : change gitlab registry name if not registry.<gitlab_instance>. By default, it's registry.gitlab.com")
-	fmt.Println("-t : filter tags to keep when moving images & registries")
-	fmt.Println("-v : verbose mode to debug your migration")
-	return ""
-}
-
-// LoadConfig loads configuration from multiple sources with priority:
-// 1. Command-line flags (highest priority)
-// 2. Environment variables
-// 3. Config file
-// 4. Interactive prompts (for missing mandatory values)
-func LoadConfig(cmd *cobra.Command) (*config.Config, error) {
-	cfg := &config.Config{
-		GitLabInstance: "gitlab.com",
-		KeepParent:     true,
-	}
-
-	// Load from config file first (lowest priority)
-	config.LoadConfigFile(cfg)
-
-	// Load from environment variables
-	config.LoadFromEnv(cfg)
-
-	// Load from command parameters
-	config.LoadFromCommand(cfg, cmd)
-
-	// Interactive prompts for missing mandatory values
-	if err := promptMissingValues(cfg); err != nil {
-		return nil, err
-	}
-
-	return cfg, nil
-}
-
-// promptMissingValues prompts user for missing mandatory configuration values
-func promptMissingValues(cfg *config.Config) error {
-	if cfg.GitLabToken != "" && cfg.OldGroupName != "" && cfg.NewGroupName != "" {
-		return nil
-	}
-	consoleUI.Warning("========================================\n")
-	consoleUI.Warning("Missing some mandatory values...")
-	reader := bufio.NewReader(os.Stdin)
-
-	if cfg.GitLabToken == "" {
-		consoleUI.Question("GitLab API Token: ")
-		token, err := reader.ReadString('\n')
-		if err != nil {
-			return fmt.Errorf("failed to read GitLab token: %w", err)
-		}
-		cfg.GitLabToken = strings.TrimSpace(token)
-	}
-
-	if cfg.OldGroupName == "" {
-		consoleUI.Question("🏚️ Old Group Name (source): ")
-		oldGroup, err := reader.ReadString('\n')
-		if err != nil {
-			return fmt.Errorf("failed to read old group name: %w", err)
-		}
-		cfg.OldGroupName = strings.TrimSpace(oldGroup)
-	}
-
-	if cfg.NewGroupName == "" {
-		consoleUI.Question("🏡 New Group Name (destination): ")
-		newGroup, err := reader.ReadString('\n')
-		if err != nil {
-			return fmt.Errorf("failed to read new group name: %w", err)
-		}
-		cfg.NewGroupName = strings.TrimSpace(newGroup)
-	}
-
-	// Set default registry if not set
-	if cfg.GitLabRegistry == "" {
-		cfg.GitLabRegistry = "registry." + cfg.GitLabInstance
-	}
-
-	// Use GitLab token as Docker token if not set
-	if cfg.DockerToken == "" {
-		cfg.DockerToken = cfg.GitLabToken
-	}
-
-	return nil
 }

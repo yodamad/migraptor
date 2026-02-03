@@ -380,3 +380,28 @@ func (ui *UI) SleepWithLog(duration time.Duration) {
 	}
 	time.Sleep(duration)
 }
+
+func PrintUsage() string {
+	fmt.Println("Usage : ./migrate -g <GITLAB_TOKEN> -o <OLD_GROUP_NAME> -n <NEW_GROUP_NAME>")
+	fmt.Println("=============================================================================")
+	fmt.Println("Mandatory options")
+	fmt.Println("-----------------")
+	fmt.Println("-g : your gitlab API token")
+	fmt.Println("-n : the full path of group that will contain the migrated projects")
+	fmt.Println("-o : the group containing the projects you want to migrate")
+	fmt.Println("-s : the simple path of group containing the projects you want to migrate, in same parent group then original one")
+	fmt.Println("-----------------")
+	fmt.Println("Other options")
+	fmt.Println("-------------")
+	fmt.Println("-d : parent group id (if there are multiple with same name on the instance)")
+	fmt.Println("-f : fake run")
+	fmt.Println("-h : display usage")
+	fmt.Println("-i : change gitlab instance. By default, it's gitlab.com")
+	fmt.Println("-k : keep the group containing the project, it will be moved into group specified with -n")
+	fmt.Println("-l : list projects to move if you want to keep some in origin group")
+	fmt.Println("-p : password for registry")
+	fmt.Println("-r : change gitlab registry name if not registry.<gitlab_instance>. By default, it's registry.gitlab.com")
+	fmt.Println("-t : filter tags to keep when moving images & registries")
+	fmt.Println("-v : verbose mode to debug your migration")
+	return ""
+}
