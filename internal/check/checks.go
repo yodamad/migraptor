@@ -17,6 +17,9 @@ func CheckBeforeStarting(currentUI *ui.UI, cmd *cobra.Command) (*gitlab.Client, 
 	// Initialize UI
 	consoleUI := currentUI
 
+	consoleUI.Info("🛂 Doing some prechecks...")
+	consoleUI.Info("----------------------------------------")
+
 	// Load config from all sources (flags, env, config file)
 	cfg, err := LoadConfig(cmd, consoleUI)
 	if err != nil {
@@ -30,9 +33,6 @@ func CheckBeforeStarting(currentUI *ui.UI, cmd *cobra.Command) (*gitlab.Client, 
 		return nil, nil, nil, fmt.Errorf("configuration validation failed: %w", err)
 	}
 
-	// Print start message
-	consoleUI.PrintMigrationStart(cfg)
-
 	// Initialize GitLab client
 	consoleUI.Info("🦊 Creating GitLab client...")
 	gitlabClient, err := gitlab.NewClient(cfg.GitLabToken, cfg.GitLabInstance)
@@ -44,7 +44,7 @@ func CheckBeforeStarting(currentUI *ui.UI, cmd *cobra.Command) (*gitlab.Client, 
 	if err := gitlabClient.CheckConnection(); err != nil {
 		return nil, nil, nil, fmt.Errorf("failed to connect to GitLab: %w", err)
 	}
-	consoleUI.Success("GitLab client created successfully\n")
+	consoleUI.Success("GitLab client created successfully")
 
 	// Initialize Docker client
 	consoleUI.Info("🐳 Creating Docker client...")
@@ -53,14 +53,14 @@ func CheckBeforeStarting(currentUI *ui.UI, cmd *cobra.Command) (*gitlab.Client, 
 		return nil, nil, nil, fmt.Errorf("failed to create Docker client: %w", err)
 	}
 	defer dockerClient.Close()
-	consoleUI.Success("Docker client created successfully\n")
+	consoleUI.Success("Docker client created successfully")
 
 	// Check Docker is running
 	if err := dockerClient.CheckDockerRunning(); err != nil {
 		consoleUI.PrintDockerNotStarted()
 		return nil, nil, nil, fmt.Errorf("Docker is not running: %w", err)
 	}
-	consoleUI.Success("Docker is running\n")
+	consoleUI.Success("Docker is running")
 
 	// Check Docker registry login
 	consoleUI.Info("🔑 Checking registry login...")
@@ -80,7 +80,7 @@ func CheckBeforeStarting(currentUI *ui.UI, cmd *cobra.Command) (*gitlab.Client, 
 	dockerClient.SetAuthInfo(authInfo)
 	consoleUI.PrintDockerLoginSuccess()
 
-	consoleUI.Success("Registry login checked successfully\n")
+	consoleUI.Success("Registry login checked successfully")
 
 	return gitlabClient, dockerClient, cfg, nil
 }

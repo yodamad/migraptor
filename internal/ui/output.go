@@ -71,7 +71,7 @@ func Init(verboseMode bool) (*UI, error) {
 	// Print welcome message
 	lightGreen.Printf("")
 	lightGreen.Printf("========================================\n")
-	lightGreen.Printf("👋 Welcome to the GitLab Migration Tool\n")
+	lightGreen.Printf("👋 Welcome MigRaptor 🦖\n")
 	lightGreen.Printf("========================================\n")
 
 	return ui, nil
@@ -151,6 +151,7 @@ func (ui *UI) PrintProjectHeader(projectName, action string) {
 func (ui *UI) PrintMigrationStart(config *config.Config) {
 
 	// Print migration summary
+	cyan.Printf("----------------------------------------\n")
 	cyan.Printf(" 🦊 GitLab Migration Tool Summary\n")
 	cyan.Printf("----------------------------------------\n")
 	cyan.Printf(" 🛫 From group:   ")

@@ -49,13 +49,14 @@ func init() {
 	rootCmd.Flags().StringSliceP(config.TAGS_LIST, "t", []string{}, "filter tags to keep when moving images & registries (comma-separated)")
 	rootCmd.Flags().BoolP(config.VERBOSE, "v", false, "verbose mode to debug your migration")
 
-	rootCmd.SetHelpTemplate(ui.PrintUsage())
+	//rootCmd.SetHelpTemplate(ui.PrintUsage())
 
 	rootCmd.AddCommand()
 }
 
 func runMigration(cmd *cobra.Command, args []string) {
 	currentUI, err := ui.Init(false)
+	consoleUI = currentUI
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to initialize UI: %v\n", err)
 		os.Exit(1)
@@ -68,7 +69,8 @@ func runMigration(cmd *cobra.Command, args []string) {
 		os.Exit(1)
 	}
 
-	consoleUI = currentUI
+	// Print start message
+	consoleUI.PrintMigrationStart(cfg)
 
 	// Initialize migrators
 	groupMigrator := migration.NewGroupMigrator(gitlabClient, cfg.DryRun, consoleUI)
