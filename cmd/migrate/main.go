@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"maps"
 	"migraptor/internal/check"
+	"migraptor/internal/command"
 	"os"
 	"strings"
 	"time"
@@ -35,23 +36,22 @@ from a group to another, as it's not possible through GitLab UI.`,
 }
 
 func init() {
-	// Define flags matching bash script interface
-	// Note: Flags are not bound to struct fields - they will be loaded via Viper
-	rootCmd.Flags().StringP(config.GITLAB_TOKEN, "g", "", "your gitlab API token")
-	rootCmd.Flags().StringP(config.OLD_GROUP_NAME, "o", "", "the group containing the projects you want to migrate")
-	rootCmd.Flags().StringP(config.NEW_GROUP_NAME, "n", "", "the full path of group that will contain the migrated projects")
-	rootCmd.Flags().BoolP(config.DRY_RUN, "f", false, "fake run")
-	rootCmd.Flags().StringP(config.GITLAB_INSTANCE, "i", "", "change gitlab instance. By default, it's gitlab.com")
-	rootCmd.Flags().BoolP(config.KEEP_PARENT, "k", false, "don't keep the parent group, transfer projects individually instead")
-	rootCmd.Flags().StringSliceP(config.PROJECTS_LIST, "l", []string{}, "list projects to move if you want to keep some in origin group (comma-separated)")
-	rootCmd.Flags().StringP(config.DOCKER_PASSWORD, "p", "", "password for registry")
-	rootCmd.Flags().StringP(config.GITLAB_REGISTRY, "r", "", "change gitlab registry name if not registry.<gitlab_instance>. By default, it's registry.gitlab.com")
-	rootCmd.Flags().StringSliceP(config.TAGS_LIST, "t", []string{}, "filter tags to keep when moving images & registries (comma-separated)")
-	rootCmd.Flags().BoolP(config.VERBOSE, "v", false, "verbose mode to debug your migration")
+	// Use PersistentFlags so these flags are available to all subcommands
+	rootCmd.PersistentFlags().StringP(config.GITLAB_TOKEN, "g", "", "your gitlab API token")
+	rootCmd.PersistentFlags().StringP(config.OLD_GROUP_NAME, "o", "", "the group containing the projects you want to migrate")
+	rootCmd.PersistentFlags().StringP(config.NEW_GROUP_NAME, "n", "", "the full path of group that will contain the migrated projects")
+	rootCmd.PersistentFlags().BoolP(config.DRY_RUN, "f", false, "fake run")
+	rootCmd.PersistentFlags().StringP(config.GITLAB_INSTANCE, "i", "", "change gitlab instance. By default, it's gitlab.com")
+	rootCmd.PersistentFlags().BoolP(config.KEEP_PARENT, "k", false, "don't keep the parent group, transfer projects individually instead")
+	rootCmd.PersistentFlags().StringSliceP(config.PROJECTS_LIST, "l", []string{}, "list projects to move if you want to keep some in origin group (comma-separated)")
+	rootCmd.PersistentFlags().StringP(config.DOCKER_PASSWORD, "p", "", "password for registry")
+	rootCmd.PersistentFlags().StringP(config.GITLAB_REGISTRY, "r", "", "change gitlab registry name if not registry.<gitlab_instance>. By default, it's registry.gitlab.com")
+	rootCmd.PersistentFlags().StringSliceP(config.TAGS_LIST, "t", []string{}, "filter tags to keep when moving images & registries (comma-separated)")
+	rootCmd.PersistentFlags().BoolP(config.VERBOSE, "v", false, "verbose mode to debug your migration")
 
 	//rootCmd.SetHelpTemplate(ui.PrintUsage())
 
-	rootCmd.AddCommand()
+	rootCmd.AddCommand(command.Clean)
 }
 
 func runMigration(cmd *cobra.Command, args []string) {

@@ -190,6 +190,18 @@ func (ui *UI) PrintMigrationStart(config *config.Config) {
 	cyan.Printf("🛫 Starting migration...\n")
 }
 
+func (ui *UI) PrintCleanStart(config *config.Config) {
+	cyan.Printf("----------------------------------------\n")
+	cyan.Printf(" 🧼 GitLab Cleaning Command Summary\n")
+	cyan.Printf("----------------------------------------\n")
+	cyan.Printf(" 🔍 In group:   ")
+	lightBlue.Printf("%s\n", config.OldGroupName)
+	cyan.Printf(" 🦊 GitLab URL:   ")
+	lightBlue.Printf("%s\n", config.GitLabInstance)
+	cyan.Printf(" 🐳 Registry URL: ")
+	lightBlue.Printf("%s\n", config.GitLabRegistry)
+}
+
 // PrintMigrationComplete prints the migration completion message
 func (ui *UI) PrintMigrationComplete(projectName string) {
 	cyan.Printf("=============================\n")
