@@ -167,4 +167,46 @@ func cleanImages(cmd *cobra.Command) {
 		consoleUI.Error("Cleaning cancelled by user.")
 		os.Exit(1)
 	}
+
+	// Delete selected images
+	consoleUI.Info("🗑️  Starting deletion of %d images...", len(selectedImages))
+
+	deletedCount := 0
+	failedCount := 0
+	totalImages := len(selectedImages)
+
+	for i, img := range selectedImages {
+		imageNum := i + 1
+		if cfg.DryRun {
+			consoleUI.Info("🌵 DRY RUN: Would delete image %d of %d: %s (Project: %s, Registry: %s)",
+				imageNum, totalImages, img.ImageInfo.Name, img.ProjectName, img.RegistryPath)
+			deletedCount++
+		} else {
+			consoleUI.Info("🗑️  Deleting image %d of %d: %s (Project: %s, Registry: %s)",
+				imageNum, totalImages, img.ImageInfo.Name, img.ProjectName, img.RegistryPath)
+
+			_, err := gitlabClient.DeleteRegistryRepositoryTag(img.ProjectID, img.RegistryID, img.ImageInfo.Name)
+			if err != nil {
+				consoleUI.Error("Failed to delete image %s: %v", img.ImageInfo.Name, err)
+				failedCount++
+			} else {
+				deletedCount++
+			}
+		}
+	}
+
+	// Display final summary
+	if cfg.DryRun {
+		consoleUI.Info("🌵 DRY RUN: Would have deleted %d images", deletedCount)
+	} else {
+		consoleUI.Info("✅ Successfully deleted %d images", deletedCount)
+		if failedCount > 0 {
+			consoleUI.Error("❌ Failed to delete %d images", failedCount)
+		}
+	}
+
+	// Exit with appropriate code
+	if failedCount > 0 {
+		os.Exit(1)
+	}
 }

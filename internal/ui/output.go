@@ -125,7 +125,7 @@ func (ui *UI) Error(format string, args ...interface{}) {
 }
 
 func (ui *UI) Confirmation(format string, args ...interface{}) {
-	bold.Printf(format+"\n", args...)
+	bold.Printf(format, args...)
 	logger.Printf("[CONFIRMATION] "+format, args...)
 }
 
@@ -206,6 +206,12 @@ func (ui *UI) PrintCleanStart(config *config.Config) {
 	lightBlue.Printf("%s\n", config.GitLabInstance)
 	cyan.Printf(" 🐳 Registry URL: ")
 	lightBlue.Printf("%s\n", config.GitLabRegistry)
+	if config.Verbose {
+		lightYellow.Printf(" 🔬 DEBUG on\n")
+	}
+	if config.DryRun {
+		lightYellow.Printf(" 🌵 DRY RUN\n")
+	}
 	cyan.Printf("----------------------------------------\n")
 
 	// Add confirmation message be starting
