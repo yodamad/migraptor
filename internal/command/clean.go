@@ -104,36 +104,67 @@ func cleanImages(cmd *cobra.Command) {
 	}
 
 	consoleUI.Info("📸 Found %d images across all registries", len(allImages))
-	consoleUI.Info("Opening image selector...")
 
-	// Create and run bubbletea program
-	model := ui.NewImageSelectorModel(allImages, gitlabClient, cfg.DryRun)
-	program := tea.NewProgram(model, tea.WithAltScreen())
+	// Create initial image selector model
+	selectorModel := ui.NewImageSelectorModel(allImages, gitlabClient, cfg.DryRun)
 
-	finalModel, err := program.Run()
-	if err != nil {
-		consoleUI.Error("Failed to run image selector: %v", err)
-		os.Exit(1)
+	// Loop between selector and summary until user confirms
+	selectedImages := []ui.ImageItem{}
+	for {
+		// Run image selector
+		program := tea.NewProgram(selectorModel, tea.WithAltScreen())
+		finalModel, err := program.Run()
+		if err != nil {
+			consoleUI.Error("Failed to run image selector: %v", err)
+			os.Exit(1)
+		}
+
+		// Get final model state
+		var ok bool
+		selectorModel, ok = finalModel.(*ui.ImageSelectorModel)
+		if !ok {
+			break
+		}
+
+		selectedImages = selectorModel.GetSelectedImages()
+		if len(selectedImages) == 0 {
+			consoleUI.Info("🤔 No images were selected.")
+			break
+		}
+
+		// Show summary
+		summaryModel := ui.NewImageSummaryModel(selectedImages)
+		summaryProgram := tea.NewProgram(summaryModel, tea.WithAltScreen())
+		summaryFinalModel, err := summaryProgram.Run()
+		if err != nil {
+			consoleUI.Error("Failed to run summary display: %v", err)
+			break
+		}
+
+		// Check if user wants to go back
+		if finalSummaryModel, ok := summaryFinalModel.(*ui.ImageSummaryModel); ok {
+			if finalSummaryModel.WentBack() {
+				// Restore selections and continue loop
+				selectorModel.RestoreSelections(selectedImages)
+				continue
+			}
+		}
+
+		// User quit summary normally, exit loop
+		break
 	}
 
-	// Get final model state and print selected images
-	if selectorModel, ok := finalModel.(*ui.ImageSelectorModel); ok {
-		selectedImages := selectorModel.GetSelectedImages()
-		if len(selectedImages) > 0 {
-			consoleUI.Info("")
-			consoleUI.Info("========================================")
-			consoleUI.Info("Selected Images Summary")
-			consoleUI.Info("========================================")
-			for _, img := range selectedImages {
-				consoleUI.Info("Project: %s", img.ProjectName)
-				consoleUI.Info("Registry: %s", img.RegistryPath)
-				consoleUI.Info("Image: %s (%s)", img.ImageInfo.Name, img.ImageInfo.Location)
-				consoleUI.Info("")
-			}
-			consoleUI.Info("Total: %d selected image(s)", len(selectedImages))
-			consoleUI.Info("========================================")
-		} else {
-			consoleUI.Info("No images were selected.")
-		}
+	if len(selectedImages) == 0 {
+		consoleUI.Warning("No image was selected.")
+		os.Exit(0)
+	}
+
+	// Add confirmation message be starting
+	consoleUI.Confirmation("🙈 Delete %d images ? (y/n)", len(selectedImages))
+	var response string
+	fmt.Scanln(&response)
+	if response != "y" && response != "Y" {
+		consoleUI.Error("Cleaning cancelled by user.")
+		os.Exit(1)
 	}
 }

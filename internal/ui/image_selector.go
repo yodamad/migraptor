@@ -276,6 +276,40 @@ func (m *ImageSelectorModel) GetSelectedImages() []ImageItem {
 	return m.getSelectedImages()
 }
 
+// RestoreSelections restores previous selections from a list of ImageItem
+func (m *ImageSelectorModel) RestoreSelections(selectedImages []ImageItem) {
+	// Create a map for quick lookup
+	selectedMap := make(map[string]bool)
+	for _, img := range selectedImages {
+		key := fmt.Sprintf("%d-%d-%s", img.ProjectID, img.RegistryID, img.ImageInfo.Name)
+		selectedMap[key] = true
+	}
+
+	// Traverse tree and restore selections
+	var traverse func(nodes []*TreeNode)
+	traverse = func(nodes []*TreeNode) {
+		for _, node := range nodes {
+			if node.Type == "image" && node.Image != nil {
+				key := fmt.Sprintf("%d-%d-%s", node.ProjectID, node.RegistryID, node.Image.ImageInfo.Name)
+				if selectedMap[key] {
+					node.Selected = true
+					node.Image.Selected = true
+				} else {
+					node.Selected = false
+					node.Image.Selected = false
+				}
+			}
+			if len(node.Children) > 0 {
+				traverse(node.Children)
+			}
+		}
+	}
+	traverse(m.tree)
+
+	// Clear finalSelected so GetSelectedImages uses current tree state
+	m.finalSelected = nil
+}
+
 // View renders the UI
 func (m *ImageSelectorModel) View() string {
 	if m.width == 0 {

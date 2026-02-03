@@ -23,6 +23,7 @@ var (
 	lightGreen  = color.New(color.FgHiGreen)
 	lightYellow = color.New(color.FgHiYellow)
 	lightBlue   = color.New(color.FgHiBlue)
+	bold        = color.New(color.Bold)
 
 	logFile *os.File
 	logger  *log.Logger
@@ -123,6 +124,11 @@ func (ui *UI) Error(format string, args ...interface{}) {
 	logger.Printf("[ERROR] "+format, args...)
 }
 
+func (ui *UI) Confirmation(format string, args ...interface{}) {
+	bold.Printf(format+"\n", args...)
+	logger.Printf("[CONFIRMATION] "+format, args...)
+}
+
 // PrintHeader prints a formatted header
 func (ui *UI) PrintHeader(text string) {
 	cyan.Printf("==========================\n")
@@ -179,7 +185,7 @@ func (ui *UI) PrintMigrationStart(config *config.Config) {
 	cyan.Printf("========================================\n")
 
 	// Add confirmation message be starting
-	fmt.Printf("❓Everything is ok ? (y/n) ")
+	bold.Printf("❓ Everything is ok ? (y/n) ")
 	var response string
 	fmt.Scanln(&response)
 	if response != "y" && response != "Y" {
@@ -200,6 +206,18 @@ func (ui *UI) PrintCleanStart(config *config.Config) {
 	lightBlue.Printf("%s\n", config.GitLabInstance)
 	cyan.Printf(" 🐳 Registry URL: ")
 	lightBlue.Printf("%s\n", config.GitLabRegistry)
+	cyan.Printf("----------------------------------------\n")
+
+	// Add confirmation message be starting
+	bold.Printf("❓ Everything is ok ? (y/n) ")
+	var response string
+	fmt.Scanln(&response)
+	if response != "y" && response != "Y" {
+		red.Printf("Cleaning cancelled by user.\n")
+		os.Exit(1)
+	}
+
+	cyan.Printf("👀 Starting to search for some images...\n")
 }
 
 // PrintMigrationComplete prints the migration completion message
