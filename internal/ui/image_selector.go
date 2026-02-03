@@ -426,7 +426,7 @@ func (m *ImageSelectorModel) renderNode(node *TreeNode, isCursor bool) string {
 		if node.Selected {
 			checkbox = checkboxStyle.Render("☑")
 		}
-		content = fmt.Sprintf("%s %s", checkbox, node.Image.ImageInfo.Name)
+		textContent := node.Image.ImageInfo.Name
 		style = imageStyle
 		if node.Selected {
 			style = selectedStyle
@@ -434,6 +434,8 @@ func (m *ImageSelectorModel) renderNode(node *TreeNode, isCursor bool) string {
 		if isCursor {
 			style = style.Bold(true).Underline(true)
 		}
+		styledText := style.Render(textContent)
+		return fmt.Sprintf("%s%s %s %s", cursor, indent, checkbox, styledText)
 	}
 
 	return fmt.Sprintf("%s%s %s", cursor, indent, style.Render(content))
