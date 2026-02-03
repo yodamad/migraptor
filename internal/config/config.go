@@ -3,7 +3,6 @@ package config
 import (
 	"fmt"
 	"os"
-	"path/filepath"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -61,12 +60,23 @@ func getFlagNameForViperKey(viperKey string) string {
 	return viperKey // Fallback to viper key itself
 }
 
+// isFlagSet checks if a flag was explicitly set by the user using flag.Changed
+func isFlagSet(cmd *cobra.Command, viperKey string) bool {
+	flagName := getFlagNameForViperKey(viperKey)
+	flag := cmd.Flags().Lookup(flagName)
+	if flag == nil {
+		return false
+	}
+	return flag.Changed
+}
+
 // copyAliasedValues copies values from aliased keys (snake_case from config file) to actual keys (kebab-case)
 // This is needed because:
 // 1. viper.Unmarshal() doesn't use aliases
 // 2. RegisterAlias doesn't work properly with ReadConfig
 // So we check if the snake_case keys exist in the config file and copy them to kebab-case keys
-func copyAliasedValues() {
+// It skips copying if a flag was already set for that key (flags have highest priority)
+func copyAliasedValues(cmd *cobra.Command) {
 	aliasMap := map[string]string{
 		"gitlab_token":    "token",
 		"gitlab_instance": "instance",
@@ -90,6 +100,10 @@ func copyAliasedValues() {
 			if err := yaml.Unmarshal(data, &rawConfig); err == nil {
 				// Check for alias keys in raw config file
 				for aliasKey, actualKey := range aliasMap {
+					// Skip if flag was already set (flags have highest priority)
+					if cmd != nil && isFlagSet(cmd, actualKey) {
+						continue
+					}
 					if value, exists := rawConfig[aliasKey]; exists && value != nil {
 						viper.Set(actualKey, value)
 					}
@@ -102,6 +116,10 @@ func copyAliasedValues() {
 	// Fallback: Use AllSettings() and viper.Get() if direct file read fails
 	allSettings := viper.AllSettings()
 	for aliasKey, actualKey := range aliasMap {
+		// Skip if flag was already set (flags have highest priority)
+		if cmd != nil && isFlagSet(cmd, actualKey) {
+			continue
+		}
 		// Check AllSettings first (might have raw keys)
 		if allSettings != nil {
 			if value, exists := allSettings[aliasKey]; exists && value != nil {
@@ -143,53 +161,29 @@ func LoadConfig(cmd *cobra.Command) (*Config, error) {
 	viper.RegisterAlias("keep_parent", "keep-parent")
 	viper.RegisterAlias("dry_run", "dry-run")
 
-	// Configure config file paths
-	viper.SetConfigName("gitlab-migraptor")
-	viper.SetConfigType("yaml")
-	viper.AddConfigPath(".")
-	homeDir, err := os.UserHomeDir()
-	if err == nil {
-		viper.AddConfigPath(homeDir)
-	}
-
-	// Try to read config file (ignore errors if file doesn't exist)
-	err = viper.ReadInConfig()
-	// Note: We ignore errors here because the config file might not exist
-
-	// Copy values from aliased keys (snake_case) to actual keys (kebab-case) for Unmarshal
-	// This is needed because:
-	// 1. viper.Unmarshal() doesn't use aliases
-	// 2. RegisterAlias doesn't work properly with ReadConfig
-	// So we manually copy values from config file keys to the keys Unmarshal expects
-	// Only do this if a config file was actually read
-	if err == nil {
-		copyAliasedValues()
-	}
-
-	// Enable automatic environment variable binding (before binding flags)
+	// Enable automatic environment variable binding
 	viper.AutomaticEnv()
-
-	// Set environment variable prefix and key replacer
-	// This allows env vars like MIGRAPTOR_TOKEN, MIGRAPTOR_OLD_GROUP, etc.
-	viper.SetEnvPrefix("MIGRAPTOR")
 	viper.SetEnvKeyReplacer(strings.NewReplacer("-", "_"))
 
 	// Also support legacy env var names without prefix
-	// Map legacy env var names to viper keys (must be done before binding flags)
-	viper.BindEnv("token", "GITLAB_TOKEN")
-	viper.BindEnv("instance", "GITLAB_INSTANCE")
-	viper.BindEnv("registry", "GITLAB_REGISTRY")
-	viper.BindEnv("docker-password", "DOCKER_TOKEN")
-	viper.BindEnv("old-group", "OLD_GROUP_NAME")
-	viper.BindEnv("new-group", "NEW_GROUP_NAME")
-	viper.BindEnv("parent-group-id", "PARENT_GROUP_ID")
-	viper.BindEnv("projects", "PROJECTS_LIST")
-	viper.BindEnv("tags", "TAGS_LIST")
-	viper.BindEnv("keep-parent", "KEEP_PARENT")
-	viper.BindEnv("dry-run", "DRY_RUN")
-	viper.BindEnv("verbose", "VERBOSE")
+	// Map legacy env var names to viper keys
+	err := viper.BindEnv("token", "GITLAB_TOKEN")
+	err = viper.BindEnv("instance", "GITLAB_INSTANCE")
+	err = viper.BindEnv("registry", "GITLAB_REGISTRY")
+	err = viper.BindEnv("docker-password", "DOCKER_TOKEN")
+	err = viper.BindEnv("old-group", "OLD_GROUP_NAME")
+	err = viper.BindEnv("new-group", "NEW_GROUP_NAME")
+	err = viper.BindEnv("parent-group-id", "PARENT_GROUP_ID")
+	err = viper.BindEnv("projects", "PROJECTS_LIST")
+	err = viper.BindEnv("tags", "TAGS_LIST")
+	err = viper.BindEnv("keep-parent", "KEEP_PARENT")
+	err = viper.BindEnv("dry-run", "DRY_RUN")
+	err = viper.BindEnv("verbose", "VERBOSE")
+	if err != nil {
+		return nil, err
+	}
 
-	// Bind individual Cobra flags to Viper (highest priority)
+	// STEP 1: Bind individual Cobra flags to Viper FIRST (highest priority)
 	// Use individual BindPFlag calls instead of BindPFlags() for reliability
 	bindFlag := func(key, flagName string) error {
 		flag := cmd.Flags().Lookup(flagName)
@@ -233,6 +227,73 @@ func LoadConfig(cmd *cobra.Command) (*Config, error) {
 		return nil, fmt.Errorf("failed to bind flag %s: %w", VERBOSE, err)
 	}
 
+	// Explicitly set flag values in Viper if flags were changed
+	// This ensures flags override config file values
+	// Note: We use viper.BindPFlag which should handle this automatically,
+	// but we explicitly set values here to ensure flags override config file
+	setFlagValue := func(viperKey string) {
+		if !isFlagSet(cmd, viperKey) {
+			return
+		}
+		flagName := getFlagNameForViperKey(viperKey)
+		flag := cmd.Flags().Lookup(flagName)
+		if flag == nil {
+			return
+		}
+
+		// Get the actual typed value from the flag based on viper key type
+		switch viperKey {
+		case "dry-run", "keep-parent", "verbose":
+			// Boolean flags
+			if boolVal, err := cmd.Flags().GetBool(flagName); err == nil {
+				viper.Set(viperKey, boolVal)
+			}
+		case "projects", "tags":
+			// String slice flags
+			if sliceVal, err := cmd.Flags().GetStringSlice(flagName); err == nil {
+				viper.Set(viperKey, sliceVal)
+			}
+		default:
+			// String flags (and other types)
+			viper.Set(viperKey, flag.Value.String())
+		}
+	}
+
+	flagKeys := []string{"token", "old-group", "new-group", "dry-run", "instance", "keep-parent", "projects", "docker-password", "registry", "tags", "verbose"}
+	for _, viperKey := range flagKeys {
+		setFlagValue(viperKey)
+	}
+
+	// STEP 2: Configure config file paths
+	viper.SetConfigName("gitlab-migraptor")
+	viper.SetConfigType("yaml")
+	viper.AddConfigPath(".")
+	homeDir, err := os.UserHomeDir()
+	if err == nil {
+		viper.AddConfigPath(homeDir)
+	}
+
+	// STEP 3: Try to read config file (ignore errors if file doesn't exist)
+	err = viper.ReadInConfig()
+	// Note: We ignore errors here because the config file might not exist
+
+	// Copy values from aliased keys (snake_case) to actual keys (kebab-case) for Unmarshal
+	// This is needed because:
+	// 1. viper.Unmarshal() doesn't use aliases
+	// 2. RegisterAlias doesn't work properly with ReadConfig
+	// So we manually copy values from config file keys to the keys Unmarshal expects
+	// Only do this if a config file was actually read
+	// copyAliasedValues will skip copying if flags were already set
+	if err == nil {
+		copyAliasedValues(cmd)
+	}
+
+	// STEP 4: Ensure flags still override config file values (in case copyAliasedValues set something)
+	// This is a safety check to ensure flags always win
+	for _, viperKey := range flagKeys {
+		setFlagValue(viperKey)
+	}
+
 	// Manually ensure env vars override config file values (but flags still have highest priority)
 	// This is needed because viper might cache config file values and not re-check env vars
 	// We check flags first - if a flag has a non-empty value, we skip env var override for that key
@@ -251,47 +312,12 @@ func LoadConfig(cmd *cobra.Command) (*Config, error) {
 		"verbose":         "VERBOSE",
 	}
 
-	migraptorEnvOverrides := map[string]string{
-		"token":           "MIGRAPTOR_TOKEN",
-		"instance":        "MIGRAPTOR_INSTANCE",
-		"registry":        "MIGRAPTOR_REGISTRY",
-		"docker-password": "MIGRAPTOR_DOCKER_PASSWORD",
-		"old-group":       "MIGRAPTOR_OLD_GROUP",
-		"new-group":       "MIGRAPTOR_NEW_GROUP",
-		"parent-group-id": "MIGRAPTOR_PARENT_GROUP_ID",
-		"projects":        "MIGRAPTOR_PROJECTS",
-		"tags":            "MIGRAPTOR_TAGS",
-		"keep-parent":     "MIGRAPTOR_KEEP_PARENT",
-		"dry-run":         "MIGRAPTOR_DRY_RUN",
-		"verbose":         "MIGRAPTOR_VERBOSE",
-	}
-
-	// Override config file values with env vars, but only if flags haven't been set
+	// STEP 5: Override config file values with env vars, but only if flags haven't been set
+	// Flags have highest priority, so skip env var override if flag was set
 	for viperKey, envVarName := range envVarOverrides {
-		// Check if flag has a value - if so, skip env var override (flags have highest priority)
-		flag := cmd.Flags().Lookup(getFlagNameForViperKey(viperKey))
-		if flag != nil {
-			// Check if flag has a non-empty value (works for both Changed and Set())
-			flagValue := flag.Value.String()
-			if flagValue != "" && flagValue != flag.DefValue {
-				continue // Flag has a value, skip env var override
-			}
-		}
-		// Check if env var is set and override config file value
-		if envValue := os.Getenv(envVarName); envValue != "" {
-			viper.Set(viperKey, envValue)
-		}
-	}
-
-	// Also check MIGRAPTOR prefixed env vars
-	for viperKey, envVarName := range migraptorEnvOverrides {
-		// Check if flag has a value - if so, skip env var override
-		flag := cmd.Flags().Lookup(getFlagNameForViperKey(viperKey))
-		if flag != nil {
-			flagValue := flag.Value.String()
-			if flagValue != "" && flagValue != flag.DefValue {
-				continue // Flag has a value, skip env var override
-			}
+		// Check if flag was set - if so, skip env var override (flags have highest priority)
+		if isFlagSet(cmd, viperKey) {
+			continue // Flag was set, skip env var override
 		}
 		// Check if env var is set and override config file value
 		if envValue := os.Getenv(envVarName); envValue != "" {
@@ -342,32 +368,4 @@ func (c *Config) Validate() error {
 		return fmt.Errorf("new group name is required")
 	}
 	return nil
-}
-
-// GetConfigFilePath returns the path to the config file if it exists
-func GetConfigFilePath() string {
-	configPaths := []string{
-		"./gitlab-migraptor.yaml",
-		"./gitlab-migraptor.yml",
-		"./gitlab-migraptor.json",
-		"./gitlab-migraptor.toml",
-	}
-
-	homeDir, err := os.UserHomeDir()
-	if err == nil {
-		configPaths = append(configPaths,
-			filepath.Join(homeDir, ".gitlab-migraptor.yaml"),
-			filepath.Join(homeDir, ".gitlab-migraptor.yml"),
-			filepath.Join(homeDir, ".gitlab-migraptor.json"),
-			filepath.Join(homeDir, ".gitlab-migraptor.toml"),
-		)
-	}
-
-	for _, path := range configPaths {
-		if _, err := os.Stat(path); err == nil {
-			return path
-		}
-	}
-
-	return ""
 }
