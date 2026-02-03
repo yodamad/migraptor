@@ -10,16 +10,26 @@
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache%202-blue.svg" alt="License"></a>
 </p>
 
-A powerful CLI tool written in Go for migrating GitLab projects (including Docker container images) between groups. This tool automates the complex process of transferring projects with container registry images, which cannot be done through the GitLab UI.
+A powerful CLI tool written in Go for managing GitLab projects and container registry images. This tool automates the complex process of transferring projects with container registry images between groups (which cannot be done through the GitLab UI) and provides utilities for cleaning container registry images.
 
 ## 🎯 Overview
 
-This tool helps you transfer GitLab projects that contain images in Container Registry from one group to another. It handles:
+MigRaptor provides two main capabilities:
+
+### Migration
+Transfer GitLab projects (including Docker container images) between groups. It handles:
 - Group creation and transfer
 - Project transfer
 - Docker image backup and restoration
 - Container registry management
 - Project archiving/unarchiving
+
+### Clean
+Clean up container registry images from GitLab projects with an interactive interface:
+- Browse and select images across groups and sub-groups
+- Preview deletion summary before confirming
+- Support for tag filtering
+- Dry-run mode for safe testing
 
 ## 📋 Requirements
 
@@ -56,8 +66,12 @@ This installs the `migraptor` binary system-wide (follow Homebrew output for the
 
 ### Using Docker
 
-The project provides a Docker image published on Docker Hub. Use that image instead of building locally if you prefer:
+The project provides a Docker image published on Docker Hub. Use that image instead of building locally if you prefer.
 
+<details>
+<summary>Click to expand Docker usage examples</summary>
+
+**Migration with Docker:**
 ```bash
 # Run with command-line options
 docker run -i --rm yodamad/migraptor:0.4.0 -g <TOKEN> -o <OLD_GROUP> -n <NEW_GROUP>
@@ -77,11 +91,22 @@ docker run -i --rm -v $(pwd):/app yodamad/migraptor:0.4.0 -g <TOKEN> -o <OLD_GRO
 cat migrate.log
 ```
 
+**Clean command with Docker:**
+```bash
+# Run clean command
+docker run -i --rm yodamad/migraptor:0.4.0 clean -g <TOKEN> -o <GROUP>
+
+# Clean with dry-run
+docker run -i --rm yodamad/migraptor:0.4.0 clean -g <TOKEN> -o <GROUP> -f -v
+```
+
 **Notes when using the Docker image**:
 - The public image is `yodamad/migraptor:latest` on Docker Hub.
 - The container runs as a non-root user for security; mount a host directory (e.g. `$(pwd)`) to persist logs and config.
 - If you need to interact with your local Docker daemon (to pull/push images from registries), mount the Docker socket: `-v /var/run/docker.sock:/var/run/docker.sock` and ensure permissions are correct.
 - Pass your GitLab API token securely (via flags or environment variables). Avoid embedding tokens in images.
+
+</details>
 
 ## ⚙️ Configuration
 
@@ -98,6 +123,9 @@ Create a config file named `gitlab-migraptor.yaml` (or `.yml`, `.json`, `.toml`)
 - Current directory (`./gitlab-migraptor.yaml`)
 - Home directory (`~/.gitlab-migraptor.yaml`)
 
+<details>
+<summary>Click to expand configuration file example</summary>
+
 Example `gitlab-migraptor.yaml`:
 ```yaml
 gitlab_token: "your-gitlab-api-token"
@@ -105,68 +133,82 @@ gitlab_instance: "gitlab.com"
 gitlab_registry: "registry.gitlab.com"
 docker_token: "your-docker-token"  # Optional, defaults to gitlab_token
 old_group_name: "source-group"
-new_group_name: "destination-group"
+new_group_name: "destination-group"  # Required for migration, not needed for clean
 projects_list: []  # Optional, empty means all projects
 tags_list: []  # Optional, empty means all tags
-keep_parent: true  # Keep parent group structure
+keep_parent: true  # Keep parent group structure (migration only)
 dry_run: false
 verbose: false
 ```
 
+</details>
+
 ### Environment Variables
+
+<details>
+<summary>Click to expand environment variables example</summary>
 
 ```bash
 export GITLAB_TOKEN="your-token"
 export GITLAB_INSTANCE="gitlab.com"
 export GITLAB_REGISTRY="registry.gitlab.com"
 export OLD_GROUP_NAME="source-group"
-export NEW_GROUP_NAME="destination-group"
-# ... etc
+export NEW_GROUP_NAME="destination-group"  # Required for migration only
+export PROJECTS_LIST="project1,project2"  # Optional
+export TAGS_LIST="latest,stable"  # Optional
+export KEEP_PARENT="true"  # Migration only
+export DRY_RUN="false"
+export VERBOSE="false"
 ```
+
+</details>
 
 ## 📚 Usage
 
-### Basic Usage
+MigRaptor provides two main commands: `migrate` (default) and `clean`. Both commands share common configuration options.
+
+### Common Command-Line Options
+
+These options are available for both commands:
+
+#### Mandatory Options
+- `-g, --token`: Your GitLab API token
+- `-o, --old-group`: The group containing the projects you want to work with
+
+#### Optional Options
+- `-f, --dry-run`: Perform a dry run without making actual changes
+- `-i, --instance`: GitLab instance (default: `gitlab.com`)
+- `-p, --docker-password`: Password for registry (defaults to GitLab token)
+- `-r, --registry`: GitLab registry name (default: `registry.<gitlab_instance>`)
+- `-t, --tags`: Comma-separated list of tags to filter (default: all tags)
+- `-v, --verbose`: Enable verbose mode for debugging
+
+### Migration Command
+
+The default command (`migrate`) transfers GitLab projects and their container registry images between groups.
+
+#### Basic Usage
 
 ```bash
 migraptor -g <GITLAB_TOKEN> -o <OLD_GROUP_NAME> -n <NEW_GROUP_NAME>
 ```
 
-### Dry Run
-
-Always test with `-f` (dry-run) flag first:
-
-```bash
-migraptor -g <TOKEN> -o <OLD_GROUP> -n <NEW_GROUP> -f -v
-```
-
-This will show you what would happen without making actual changes.
-
-### Command-Line Options
-
-#### Mandatory Options
-- `-g, --token`: Your GitLab API token
-- `-o, --old-group`: The group containing the projects you want to migrate
-- `-n, --new-group`: The full path of group that will contain the migrated projects
-
-#### Optional Options
-- `-f, --dry-run`: Perform a dry run without making actual changes
-- `-i, --instance`: GitLab instance (default: `gitlab.com`)
+#### Additional Options for Migration
+- `-n, --new-group`: The full path of group that will contain the migrated projects (required for migration)
 - `-k, --keep-parent`: Don't keep the parent group, transfer projects individually instead
 - `-l, --projects`: Comma-separated list of projects to migrate (default: all projects)
-- `-p, --docker-password`: Password for registry (defaults to GitLab token)
-- `-r, --registry`: GitLab registry name (default: `registry.<gitlab_instance>`)
-- `-t, --tags`: Comma-separated list of tags to migrate (default: all tags)
-- `-v, --verbose`: Enable verbose mode for debugging
 
-### Examples
+#### Migration Examples
 
-#### Example 1: Simple Migration
+<details>
+<summary>Click to expand migration examples</summary>
+
+**Example 1: Simple Migration**
 ```bash
 migraptor -g glpat-xxxxx -o old-group -n new-group
 ```
 
-#### Example 2: MigRaptor Specific Projects with Tag Filter
+**Example 2: Migrate Specific Projects with Tag Filter**
 ```bash
 migraptor \
   -g glpat-xxxxx \
@@ -176,7 +218,7 @@ migraptor \
   -t latest,stable
 ```
 
-#### Example 3: Dry Run (Test Migration)
+**Example 3: Dry Run (Test Migration)**
 ```bash
 migraptor \
   -g glpat-xxxxx \
@@ -186,7 +228,7 @@ migraptor \
   -v
 ```
 
-#### Example 4: Transfer Projects Individually (Don't Keep Parent)
+**Example 4: Transfer Projects Individually (Don't Keep Parent)**
 ```bash
 migraptor \
   -g glpat-xxxxx \
@@ -195,7 +237,63 @@ migraptor \
   -k
 ```
 
+</details>
+
+### Clean Command
+
+The `clean` command (aliased as `cl`) provides an interactive interface to browse and delete container registry images from GitLab projects.
+
+#### Basic Usage
+
+```bash
+migraptor clean -g <GITLAB_TOKEN> -o <GROUP_NAME>
+```
+
+or using the alias:
+
+```bash
+migraptor cl -g <GITLAB_TOKEN> -o <GROUP_NAME>
+```
+
+#### Features
+
+- **Interactive Image Selector**: Browse and select images across all projects in a group (including sub-groups)
+- **Summary View**: Preview selected images before deletion
+- **Tag Filtering**: Use `-t` flag to filter images by tags
+- **Dry-Run Support**: Test deletions safely with `-f` flag
+- **Project Filtering**: Use `-l` flag to limit to specific projects
+
+#### Clean Examples
+
+<details>
+<summary>Click to expand clean command examples</summary>
+
+**Example 1: Interactive Clean (All Images)**
+```bash
+migraptor clean -g glpat-xxxxx -o my-group
+```
+
+**Example 2: Clean with Tag Filter**
+```bash
+migraptor clean -g glpat-xxxxx -o my-group -t old-tag,deprecated
+```
+
+**Example 3: Dry Run (Preview Deletions)**
+```bash
+migraptor clean -g glpat-xxxxx -o my-group -f -v
+```
+
+**Example 4: Clean Specific Projects**
+```bash
+migraptor clean -g glpat-xxxxx -o my-group -l project1,project2
+```
+
+</details>
+
 ## 🔧 How It Works
+
+<details>
+<summary>Click to expand architecture and implementation details</summary>
 
 ### Architecture
 
@@ -216,8 +314,12 @@ migraptor/
 │   │   ├── groups.go    # Group operations
 │   │   ├── projects.go  # Project operations
 │   │   └── images.go    # Image operations
+│   ├── command/         # Command implementations
+│   │   └── clean.go     # Clean command logic
 │   └── ui/              # User interface and logging
-│       └── output.go
+│       ├── output.go
+│       ├── image_selector.go
+│       └── image_summary.go
 └── go.mod
 ```
 
@@ -247,6 +349,32 @@ migraptor/
    - Tag images with new registry paths
    - Push images to new registry location
    - Re-archive projects if they were archived
+
+### Clean Flow
+
+1. **Initialization**
+   - Load configuration (same as migration)
+   - Initialize GitLab client
+   - Verify connections and permissions
+
+2. **Group Discovery**
+   - Search for source group by name/path
+   - Discover all projects including sub-groups
+
+3. **Image Collection**
+   - Collect all images from all projects in the group
+   - Apply tag filters if specified
+   - Build image list with metadata
+
+4. **Interactive Selection**
+   - Display interactive image selector UI
+   - Allow user to browse and select images
+   - Show summary of selected images
+
+5. **Deletion**
+   - Confirm deletion with user
+   - Delete selected images from registry
+   - Report success/failure for each deletion
 
 ### Key Components
 
@@ -279,6 +407,10 @@ migraptor/
 - Colored terminal output (matching original bash script style)
 - Structured logging to `migrate.log`
 - Debug/verbose mode support
+- Interactive image selector (Bubble Tea TUI)
+- Image summary display
+
+</details>
 
 ## 🧪 Testing
 
