@@ -164,7 +164,12 @@ func (c *Client) ListRegistryRepositories(projectID int) ([]*gitlab.RegistryRepo
 
 // ListRegistryRepositoryTags lists tags for a registry repository
 func (c *Client) ListRegistryRepositoryTags(projectID, repositoryID int) ([]*gitlab.RegistryRepositoryTag, *gitlab.Response, error) {
-	return c.client.ContainerRegistry.ListRegistryRepositoryTags(int64(projectID), int64(repositoryID), nil)
+	requestOptions := &gitlab.ListRegistryRepositoryTagsOptions{
+		ListOptions: gitlab.ListOptions{
+			PerPage: 100,
+		},
+	}
+	return c.client.ContainerRegistry.ListRegistryRepositoryTags(int64(projectID), int64(repositoryID), requestOptions)
 }
 
 // DeleteRegistryRepository deletes a registry repository
