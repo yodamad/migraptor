@@ -78,19 +78,19 @@ The project provides a Docker image published on Docker Hub. Use that image inst
 **Migration with Docker:**
 ```bash
 # Run with command-line options
-docker run -i --rm yodamad/migraptor:0.5.0 -g <TOKEN> -o <OLD_GROUP> -n <NEW_GROUP>
+docker run -i --rm yodamad/migraptor:0.6.0 -g <TOKEN> -o <OLD_GROUP> -n <NEW_GROUP>
 
 # Run with config file (mount current directory)
-docker run -i --rm -v $(pwd):/app yodamad/migraptor:0.5.0
+docker run -i --rm -v $(pwd):/app yodamad/migraptor:0.6.0
 
 # Run with verbose output
-docker run -i --rm yodamad/migraptor:0.5.0 -g <TOKEN> -o <OLD_GROUP> -n <NEW_GROUP> -v
+docker run -i --rm yodamad/migraptor:0.6.0 -g <TOKEN> -o <OLD_GROUP> -n <NEW_GROUP> -v
 
 # Run with dry-run mode
-docker run -i --rm yodamad/migraptor:0.5.0 -g <TOKEN> -o <OLD_GROUP> -n <NEW_GROUP> -f -v
+docker run -i --rm yodamad/migraptor:0.6.0 -g <TOKEN> -o <OLD_GROUP> -n <NEW_GROUP> -f -v
 
 # Persist logs: mount current directory so migrate.log is written to host
-docker run -i --rm -v $(pwd):/app yodamad/migraptor:0.5.0 -g <TOKEN> -o <OLD_GROUP> -n <NEW_GROUP>
+docker run -i --rm -v $(pwd):/app yodamad/migraptor:0.6.0 -g <TOKEN> -o <OLD_GROUP> -n <NEW_GROUP>
 # then on host
 cat migrate.log
 ```
@@ -98,10 +98,10 @@ cat migrate.log
 **Clean command with Docker:**
 ```bash
 # Run clean command
-docker run -i --rm yodamad/migraptor:0.5.0 clean -g <TOKEN> -o <GROUP>
+docker run -i --rm yodamad/migraptor:0.6.0 clean -g <TOKEN> -o <GROUP>
 
 # Clean with dry-run
-docker run -i --rm yodamad/migraptor:0.5.0 clean -g <TOKEN> -o <GROUP> -f -v
+docker run -i --rm yodamad/migraptor:0.6.0 clean -g <TOKEN> -o <GROUP> -f -v
 ```
 
 **Notes when using the Docker image**:
