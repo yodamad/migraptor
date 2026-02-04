@@ -5,6 +5,7 @@ import (
 	"log"
 	"migraptor/internal/config"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/fatih/color"
@@ -165,7 +166,13 @@ func (ui *UI) PrintMigrationStart(config *config.Config) {
 	cyan.Printf(" 🛫 From group:   ")
 	lightBlue.Printf("%s/%s\n", config.GitLabInstance, config.OldGroupName)
 	cyan.Printf(" 🛬 To group:     ")
-	lightBlue.Printf("%s/%s\n", config.GitLabInstance, config.NewGroupName)
+	if config.KeepParent {
+		parts := strings.Split(strings.TrimSuffix(config.OldGroupName, "/"), "/")
+		lastPart := parts[len(parts)-1]
+		lightBlue.Printf("%s/%s/%s\n", config.GitLabInstance, config.NewGroupName, lastPart)
+	} else {
+		lightBlue.Printf("%s/%s\n", config.GitLabInstance, config.NewGroupName)
+	}
 	cyan.Printf(" 🐳 Registry URL: ")
 	lightBlue.Printf("%s\n", config.GitLabRegistry)
 	if len(config.ProjectsList) > 0 {
