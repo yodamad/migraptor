@@ -5,6 +5,7 @@ import (
 	"maps"
 	"migraptor/internal/gitlab"
 	"migraptor/internal/ui"
+	"strings"
 
 	gitlabCore "gitlab.com/gitlab-org/api/client-go"
 )
@@ -29,7 +30,9 @@ func NewGroupMigrator(client *gitlab.Client, dryRun bool, cUI *ui.UI) *GroupMigr
 func (gm *GroupMigrator) SearchGroup(name string) (*gitlabCore.Group, error) {
 	gm.consoleUI.Debug("Searching for group: %s", name)
 
-	result, err := gm.client.SearchGroup(name)
+	trimName := strings.TrimSuffix(name, "/")
+	trimName = strings.TrimPrefix(trimName, "/")
+	result, err := gm.client.SearchGroup(trimName)
 	if err != nil {
 		return nil, fmt.Errorf("failed to search group %s: %w", name, err)
 	}
