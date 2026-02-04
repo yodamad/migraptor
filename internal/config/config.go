@@ -24,6 +24,7 @@ type Config struct {
 	KeepParent     bool     `mapstructure:"keep-parent"`
 	DryRun         bool     `mapstructure:"dry-run"`
 	Verbose        bool     `mapstructure:"verbose"`
+	BackupImages   bool     `mapstructure:"backup-images"`
 }
 
 const GITLAB_TOKEN = "token"
@@ -37,6 +38,7 @@ const TAGS_LIST = "tags"
 const KEEP_PARENT = "keep-parent"
 const DRY_RUN = "dry-run"
 const VERBOSE = "verbose"
+const BACKUP_IMAGES = "backup-images"
 
 // getFlagNameForViperKey returns the flag name (constant) for a given viper key
 func getFlagNameForViperKey(viperKey string) string {
@@ -53,6 +55,7 @@ func getFlagNameForViperKey(viperKey string) string {
 		"keep-parent":     KEEP_PARENT,
 		"dry-run":         DRY_RUN,
 		"verbose":         VERBOSE,
+		"backup-images":   BACKUP_IMAGES,
 	}
 	if flagName, ok := flagMap[viperKey]; ok {
 		return flagName
@@ -89,6 +92,7 @@ func copyAliasedValues(cmd *cobra.Command) {
 		"tags_list":       "tags",
 		"keep_parent":     "keep-parent",
 		"dry_run":         "dry-run",
+		"backup_images":   "backup-images",
 	}
 
 	// Try to read the config file directly to get raw keys
@@ -160,6 +164,7 @@ func LoadConfig(cmd *cobra.Command) (*Config, error) {
 	viper.RegisterAlias("tags_list", "tags")
 	viper.RegisterAlias("keep_parent", "keep-parent")
 	viper.RegisterAlias("dry_run", "dry-run")
+	viper.RegisterAlias("backup_images", "backup-images")
 
 	// Enable automatic environment variable binding
 	viper.AutomaticEnv()
@@ -179,6 +184,7 @@ func LoadConfig(cmd *cobra.Command) (*Config, error) {
 	err = viper.BindEnv("keep-parent", "KEEP_PARENT")
 	err = viper.BindEnv("dry-run", "DRY_RUN")
 	err = viper.BindEnv("verbose", "VERBOSE")
+	err = viper.BindEnv("backup-images", "BACKUP_IMAGES")
 	if err != nil {
 		return nil, err
 	}
@@ -225,6 +231,9 @@ func LoadConfig(cmd *cobra.Command) (*Config, error) {
 	}
 	if err := bindFlag("verbose", VERBOSE); err != nil {
 		return nil, fmt.Errorf("failed to bind flag %s: %w", VERBOSE, err)
+	}
+	if err := bindFlag("backup-images", BACKUP_IMAGES); err != nil {
+		return nil, fmt.Errorf("failed to bind flag %s: %w", BACKUP_IMAGES, err)
 	}
 
 	// Explicitly set flag values in Viper if flags were changed

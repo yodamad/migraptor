@@ -60,3 +60,6 @@ dry_run: true
 # true: Show detailed debug information
 # false: Show only essential information
 verbose: false
+
+# Backup images before deleting them
+backup_images: true

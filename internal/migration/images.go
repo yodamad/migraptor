@@ -8,6 +8,8 @@ import (
 	"migraptor/internal/docker"
 	"migraptor/internal/gitlab"
 	"migraptor/internal/ui"
+
+	gitlabCore "gitlab.com/gitlab-org/api/client-go"
 )
 
 // ImageInfo holds information about a Docker image
@@ -69,15 +71,15 @@ func (im *ImageMigrator) GetImages(projectID, repositoryID int, tagFilter []stri
 }
 
 // BackupImages backs up all images from a project's registry
-func (im *ImageMigrator) BackupImages(project *ProjectInfo, tagFilter []string) ([]string, error) {
+func (im *ImageMigrator) BackupImages(project *ProjectInfo, tagFilter []string) ([]string, []*gitlabCore.RegistryRepository, error) {
 	repositories, _, err := im.gitlabClient.ListRegistryRepositories(project.ID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to list registry repositories: %w", err)
+		return nil, nil, fmt.Errorf("failed to list registry repositories: %w", err)
 	}
 
 	if len(repositories) == 0 {
 		im.consoleUI.PrintNoRegistryFound()
-		return nil, nil
+		return nil, nil, nil
 	}
 
 	var allImages []string
@@ -117,14 +119,17 @@ func (im *ImageMigrator) BackupImages(project *ProjectInfo, tagFilter []string) 
 				im.consoleUI.Info("🔌 Pulling image %s...", imageRef)
 				if err := im.dockerClient.PullImage(imageRef); err != nil {
 					im.consoleUI.Error("Failed to pull image %s: %v", imageRef, err)
-					return nil, fmt.Errorf("failed to pull image %s: %w", imageRef, err)
+					return nil, nil, fmt.Errorf("failed to pull image %s: %w", imageRef, err)
 				}
 			}
 			allImages = append(allImages, imageRef)
 		}
+	}
+	return allImages, repositories, nil
+}
 
-		// Delete registry repository
-		im.consoleUI.PrintRemovingRegistry()
+func (im *ImageMigrator) DeleteRegistries(project *ProjectInfo, repositories []*gitlabCore.RegistryRepository) error {
+	for _, repo := range repositories {
 		if im.dryRun {
 			im.consoleUI.Info("🌵 DRY RUN: Would delete registry repository %d", repo.ID)
 		} else {
@@ -139,10 +144,7 @@ func (im *ImageMigrator) BackupImages(project *ProjectInfo, tagFilter []string) 
 			im.consoleUI.SleepWithLog(10 * time.Second)
 		}
 	}
-
-	project.RegistryRepositoriesIDs = allRepositoryIDs
-
-	return allImages, nil
+	return nil
 }
 
 func (im *ImageMigrator) CheckIfRemainingImages(projects map[int]*ProjectInfo, tagFilter []string) error {

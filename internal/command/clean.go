@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"maps"
 	"migraptor/internal/check"
+	"migraptor/internal/config"
 	"migraptor/internal/migration"
 	"migraptor/internal/ui"
 	"os"
@@ -21,6 +22,10 @@ var Clean = &cobra.Command{
 	},
 }
 
+func init() {
+	Clean.Flags().BoolP(config.BACKUP_IMAGES, "b", true, "Backup images before deleting them")
+}
+
 func cleanImages(cmd *cobra.Command) {
 	consoleUI, err := ui.Init(false)
 	if err != nil {
@@ -29,7 +34,7 @@ func cleanImages(cmd *cobra.Command) {
 	}
 	defer ui.Close()
 
-	gitlabClient, _, cfg, err := check.CheckBeforeStarting(consoleUI, cmd)
+	gitlabClient, dockerClient, cfg, err := check.CheckBeforeStarting(consoleUI, cmd)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to check before starting: %v\n", err)
 		os.Exit(1)
@@ -41,6 +46,7 @@ func cleanImages(cmd *cobra.Command) {
 	// Initialize migrators
 	groupMigrator := migration.NewGroupMigrator(gitlabClient, cfg.DryRun, consoleUI)
 	projectMigrator := migration.NewProjectMigrator(gitlabClient, cfg.DryRun, consoleUI)
+	imageMigrator := migration.NewImageMigrator(gitlabClient, dockerClient, cfg.DryRun, consoleUI)
 
 	// Search for source group
 	consoleUI.Info("🔍 Searching for source group...")
@@ -85,7 +91,6 @@ func cleanImages(cmd *cobra.Command) {
 
 	// Collect all images from all projects
 	consoleUI.Info("🔍 Collecting images from all registries...")
-	imageMigrator := migration.NewImageMigrator(gitlabClient, nil, cfg.DryRun, consoleUI)
 	allImagesPtr, err := imageMigrator.GetAllImagesFromProjects(allProjects, cfg.TagsList)
 	if err != nil {
 		consoleUI.Error("Failed to collect images: %v", err)
@@ -166,6 +171,39 @@ func cleanImages(cmd *cobra.Command) {
 	if response != "y" && response != "Y" {
 		consoleUI.Error("Cleaning cancelled by user.")
 		os.Exit(1)
+	}
+
+	if cfg.BackupImages {
+		consoleUI.Info("🛟 Backup images locally before deleting")
+	} else {
+		consoleUI.Confirmation("🛟 Backup images before (docker pull) ? (y/n)")
+	}
+
+	fmt.Scanln(&response)
+	if response == "y" || response == "Y" {
+		// Group selected images by project ID upfront for O(1) lookup
+		// This avoids iterating through all selected images for each project
+		// Complexity: O(S + P) instead of O(P * S)
+		imagesByProject := make(map[int][]string)
+		for _, img := range selectedImages {
+			imagesByProject[img.ProjectID] = append(imagesByProject[img.ProjectID], img.ImageInfo.Name)
+		}
+
+		// Iterate through projects and only process those with selected images
+		for _, proj := range allProjects {
+			projectSelectedImages, hasImages := imagesByProject[proj.ID]
+			if !hasImages || len(projectSelectedImages) == 0 {
+				continue
+			}
+
+			_, _, err := imageMigrator.BackupImages(proj, projectSelectedImages)
+			if err != nil {
+				consoleUI.Error("Failed to backup images: %v", err)
+				os.Exit(1)
+			}
+		}
+	} else {
+		consoleUI.Warning("Backup skipped.")
 	}
 
 	// Delete selected images

@@ -141,6 +141,7 @@ new_group_name: "destination-group"  # Required for migration, not needed for cl
 projects_list: []  # Optional, empty means all projects
 tags_list: []  # Optional, empty means all tags
 keep_parent: true  # Keep parent group structure (migration only)
+backup_images: true  # Backup images before deletion (clean command only, default: true)
 dry_run: false
 verbose: false
 ```
@@ -266,6 +267,10 @@ migraptor cl -g <GITLAB_TOKEN> -o <GROUP_NAME>
 - **Tag Filtering**: Use `-t` flag to filter images by tags
 - **Dry-Run Support**: Test deletions safely with `-f` flag
 - **Project Filtering**: Use `-l` flag to limit to specific projects
+- **Image Backup**: Automatically backup images before deletion (enabled by default)
+
+#### Additional Options for Clean
+- `-b, --backup-images`: Backup images before deleting them (default: `true`). Set to `false` to skip backup or be prompted interactively.
 
 #### Clean Examples
 
@@ -290,6 +295,11 @@ migraptor clean -g glpat-xxxxx -o my-group -f -v
 **Example 4: Clean Specific Projects**
 ```bash
 migraptor clean -g glpat-xxxxx -o my-group -l project1,project2
+```
+
+**Example 5: Clean Without Backup**
+```bash
+migraptor clean -g glpat-xxxxx -o my-group --backup-images=false
 ```
 
 </details>

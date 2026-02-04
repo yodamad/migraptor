@@ -154,8 +154,10 @@ func runMigration(cmd *cobra.Command, args []string) {
 
 		// Backup images if registry is enabled
 		if project.ContainerRegistryEnabled {
-			images, err := imageMigrator.BackupImages(project, cfg.TagsList)
+			images, repos, err := imageMigrator.BackupImages(project, cfg.TagsList)
 			consoleUI.Info("👀 Found %d registries in project %s", len(project.RegistryRepositoriesIDs), project.Path)
+			consoleUI.PrintRemovingRegistry()
+			err = imageMigrator.DeleteRegistries(project, repos)
 			if err != nil {
 				consoleUI.Error("Failed to backup images: %v", err)
 				os.Exit(99)
