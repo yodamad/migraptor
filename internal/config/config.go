@@ -199,6 +199,14 @@ func LoadConfig(cmd *cobra.Command) (*Config, error) {
 		return viper.BindPFlag(key, flag)
 	}
 
+	// bindFlagOptional binds a flag if it exists, otherwise silently skips it
+	bindFlagOptional := func(key, flagName string) {
+		flag := cmd.Flags().Lookup(flagName)
+		if flag != nil {
+			viper.BindPFlag(key, flag)
+		}
+	}
+
 	if err := bindFlag("token", GITLAB_TOKEN); err != nil {
 		return nil, fmt.Errorf("failed to bind flag %s: %w", GITLAB_TOKEN, err)
 	}
@@ -232,9 +240,8 @@ func LoadConfig(cmd *cobra.Command) (*Config, error) {
 	if err := bindFlag("verbose", VERBOSE); err != nil {
 		return nil, fmt.Errorf("failed to bind flag %s: %w", VERBOSE, err)
 	}
-	if err := bindFlag("backup-images", BACKUP_IMAGES); err != nil {
-		return nil, fmt.Errorf("failed to bind flag %s: %w", BACKUP_IMAGES, err)
-	}
+	// backup-images flag only exists in the clean command, so bind it optionally
+	bindFlagOptional("backup-images", BACKUP_IMAGES)
 
 	// Explicitly set flag values in Viper if flags were changed
 	// This ensures flags override config file values
